@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>zZZing · 2026 Performance Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Barlow:wght@300;400;600;700;900&family=Bebas+Neue&display=swap" rel="stylesheet">
+<style>
+
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0b0b0b;
+  --surface:#111;
+  --surface2:#181818;
+  --border:rgba(255,255,255,0.07);
+  --white:#f2ede4;
+  --muted:#5a5a5a;
+  --gold:#e8a820;
+  --green:#2ecc71;
+  --red:#e74c3c;
+  --blue:#5b9bd5;
+  --amber:#f39c12;
+  --new:#7b68ee;
+  --orange:#e67e22;
+  --teal:#1abc9c;
+}
+body{background:var(--bg);color:var(--white);font-family:'Barlow',sans-serif;font-weight:300;min-height:100vh}
+
+/* ── TAB NAV ── */
+.tab-nav{
+  display:flex;gap:0;background:var(--surface);
+  border-bottom:2px solid var(--border);
+  position:sticky;top:0;z-index:60;
+}
+.tab-btn{
+  font-family:'DM Mono',monospace;font-size:0.65rem;letter-spacing:0.16em;text-transform:uppercase;
+  padding:1rem 2rem;border:none;background:transparent;color:var(--muted);
+  cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;
+  transition:all 0.15s;white-space:nowrap;
+}
+.tab-btn:hover{color:var(--white)}
+.tab-btn.active{color:var(--gold);border-bottom-color:var(--gold)}
+.tab-panel{display:none}
+.tab-panel.active{display:block}
+
+/* ── HEADER ── */
+header{
+  background:var(--surface);
+  border-bottom:1px solid var(--border);
+  padding:1.8rem 2.5vw 1.4rem;
+  display:flex;align-items:flex-end;justify-content:space-between;gap:1rem;
+  position:sticky;top:0;z-index:50;
+}
+.brand-line{display:flex;flex-direction:column;gap:0.15rem}
+.brand-top{font-family:'DM Mono',monospace;font-size:0.6rem;letter-spacing:0.2em;text-transform:uppercase;color:var(--gold)}
+.brand-title{font-family:'Bebas Neue',sans-serif;font-size:2.2rem;line-height:1;letter-spacing:0.02em}
+.brand-title span{color:var(--gold)}
+.header-right{text-align:right}
+.header-period{font-family:'DM Mono',monospace;font-size:0.62rem;letter-spacing:0.12em;color:var(--muted);text-transform:uppercase;line-height:1.7}
+
+/* ── LEGEND BAR ── */
+.legend-bar{
+  background:var(--surface2);
+  border-bottom:1px solid var(--border);
+  padding:0.7rem 2.5vw;
+  display:flex;flex-wrap:wrap;gap:0.5rem 2rem;align-items:center;
+}
+.leg{display:flex;align-items:center;gap:0.4rem;font-family:'DM Mono',monospace;font-size:0.6rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted)}
+.leg-dot{width:8px;height:8px;border-radius:2px;flex-shrink:0}
+.ld-act{background:var(--white)}
+.ld-bud{background:var(--gold);opacity:0.7}
+.ld-ly{background:var(--blue);opacity:0.7}
+
+/* ── FILTER TABS ── */
+.filter-row{
+  padding:1.2rem 2.5vw 0;
+  display:flex;gap:0.5rem;flex-wrap:wrap;align-items:center;
+}
+.filter-label{font-family:'DM Mono',monospace;font-size:0.58rem;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted);margin-right:0.3rem}
+.ftab{
+  font-family:'DM Mono',monospace;font-size:0.6rem;letter-spacing:0.1em;text-transform:uppercase;
+  padding:4px 12px;border-radius:2px;border:1px solid var(--border);
+  background:transparent;color:var(--muted);cursor:pointer;transition:all 0.15s;
+}
+.ftab.active,.ftab:hover{background:var(--gold);color:var(--bg);border-color:var(--gold)}
+.ftab.new-tag{border-color:var(--new);color:var(--new)}
+.ftab.new-tag.active{background:var(--new);color:white}
+
+/* ── SUMMARY STATS ── */
+.summary-row{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:1px;
+  background:var(--border);margin:1.2rem 2.5vw 0;
+  border:1px solid var(--border);
+}
+.sum-card{background:var(--surface2);padding:1.2rem 1.5rem}
+.sum-label{font-family:'DM Mono',monospace;font-size:0.56rem;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted);margin-bottom:0.4rem}
+.sum-val{font-family:'Bebas Neue',sans-serif;font-size:2rem;line-height:1;letter-spacing:0.02em}
+.sum-sub{font-size:0.7rem;font-weight:300;color:var(--muted);margin-top:0.2rem}
+.sum-sub .pos{color:var(--green)}
+.sum-sub .neg{color:var(--red)}
+
+/* ── MAIN GRID ── */
+.main-grid{
+  padding:1.2rem 2.5vw 3rem;
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(420px,1fr));
+  gap:1px;
+  background:var(--border);
+  border:1px solid var(--border);
+  margin:0.8rem 2.5vw 0;
+}
+.unit-card{
+  background:var(--surface);
+  padding:1.4rem 1.5rem;
+  position:relative;
+  transition:background 0.15s;
+}
+.unit-card:hover{background:var(--surface2)}
+.unit-card.new-unit{border-left:3px solid var(--new)}
+.unit-card.hidden{display:none}
+
+/* card header */
+.card-head{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:1rem}
+.unit-name{font-family:'Barlow',sans-serif;font-weight:700;font-size:0.95rem;text-transform:uppercase;letter-spacing:0.04em;line-height:1.2}
+.unit-badges{display:flex;gap:0.35rem;flex-wrap:wrap;margin-top:0.3rem}
+.badge{font-family:'DM Mono',monospace;font-size:0.5rem;letter-spacing:0.1em;text-transform:uppercase;padding:2px 6px;border-radius:2px}
+.badge-new{background:rgba(123,104,238,0.15);color:var(--new);border:1px solid rgba(123,104,238,0.3)}
+.badge-no-ly{background:rgba(91,155,213,0.1);color:var(--blue);border:1px solid rgba(91,155,213,0.25)}
+.badge-no-bud{background:rgba(232,168,32,0.1);color:var(--gold);border:1px solid rgba(232,168,32,0.25)}
+
+/* revenue bar section */
+.rev-section{margin-bottom:1rem}
+.metric-label{font-family:'DM Mono',monospace;font-size:0.54rem;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted);margin-bottom:0.5rem}
+
+.bar-group{display:flex;flex-direction:column;gap:3px;margin-bottom:0.7rem}
+.bar-row{display:flex;align-items:center;gap:0.6rem}
+.bar-tag{font-family:'DM Mono',monospace;font-size:0.5rem;letter-spacing:0.08em;text-transform:uppercase;width:28px;flex-shrink:0;color:var(--muted)}
+.bar-track{flex:1;height:8px;background:rgba(255,255,255,0.04);border-radius:1px;overflow:visible;position:relative}
+.bar-fill{height:100%;border-radius:1px;transition:width 0.8s cubic-bezier(0.16,1,0.3,1)}
+.bar-act{background:var(--white);opacity:0.9}
+.bar-bud{background:var(--gold);opacity:0.55}
+.bar-ly{background:var(--blue);opacity:0.55}
+.bar-val{font-family:'DM Mono',monospace;font-size:0.58rem;letter-spacing:0.04em;width:70px;text-align:right;flex-shrink:0}
+
+/* month columns */
+.months-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--border);border:1px solid var(--border);border-radius:2px;overflow:hidden}
+.month-col{background:var(--surface2);padding:0.65rem 0.6rem}
+.month-name{font-family:'DM Mono',monospace;font-size:0.55rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);margin-bottom:0.5rem;text-align:center}
+.metric-block{margin-bottom:0.5rem}
+.metric-block:last-child{margin-bottom:0}
+.m-label{font-family:'DM Mono',monospace;font-size:0.46rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:1px}
+.m-val{font-size:0.85rem;font-weight:700;line-height:1.2}
+.m-comps{display:flex;flex-direction:column;gap:1px;margin-top:1px}
+.m-comp{font-family:'DM Mono',monospace;font-size:0.48rem;letter-spacing:0.04em;display:flex;align-items:center;gap:3px}
+.m-comp .ci{width:5px;height:5px;border-radius:1px;flex-shrink:0}
+.ci-bud{background:var(--gold)}
+.ci-ly{background:var(--blue)}
+.arrow-up{color:var(--green)}
+.arrow-dn{color:var(--red)}
+.arrow-eq{color:var(--muted)}
+
+/* no-data placeholder */
+.no-data{font-family:'DM Mono',monospace;font-size:0.55rem;letter-spacing:0.08em;color:var(--muted);padding:0.3rem 0;font-style:italic}
+
+/* footer */
+footer{
+  padding:1.4rem 2.5vw;border-top:1px solid var(--border);
+  display:flex;justify-content:space-between;align-items:center;
+  font-family:'DM Mono',monospace;font-size:0.58rem;letter-spacing:0.1em;color:var(--muted);text-transform:uppercase;
+}
+
+/* ── OTB PANEL ── */
+.otb-summary-row{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--border);border:1px solid var(--border);margin:1.2rem 2.5vw 0}
+.otb-alert-bar{margin:0.8rem 2.5vw 0;padding:0.9rem 1.4rem;background:#1a0e00;border:1px solid rgba(230,126,34,0.3);display:flex;align-items:center;gap:0.8rem;flex-wrap:wrap}
+.alert-title{font-family:'DM Mono',monospace;font-size:0.6rem;letter-spacing:0.14em;text-transform:uppercase;color:var(--orange);flex-shrink:0}
+.alert-chips{display:flex;flex-wrap:wrap;gap:0.4rem}
+.alert-chip{font-family:'DM Mono',monospace;font-size:0.56rem;letter-spacing:0.08em;padding:3px 8px;border-radius:2px;background:rgba(230,126,34,0.12);color:var(--orange);border:1px solid rgba(230,126,34,0.25)}
+.alert-chip.danger{background:rgba(231,76,60,0.12);color:var(--red);border-color:rgba(231,76,60,0.3)}
+
+.otb-grid{padding:1rem 2.5vw 3rem;display:flex;flex-direction:column;gap:1px;background:var(--border);border:1px solid var(--border);margin:0.8rem 2.5vw 0}
+.otb-unit-row{background:var(--surface);padding:1.2rem 1.5rem;display:grid;grid-template-columns:200px 1fr;gap:1.5rem;align-items:center;transition:background 0.15s}
+.otb-unit-row:hover{background:var(--surface2)}
+.otb-unit-name{font-weight:700;font-size:0.9rem;text-transform:uppercase;letter-spacing:0.04em;line-height:1.3}
+.otb-unit-total{font-family:'DM Mono',monospace;font-size:0.58rem;letter-spacing:0.08em;color:var(--muted);margin-top:0.2rem}
+
+.month-track-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:4px}
+.month-track{background:var(--surface2);border-radius:3px;padding:0.7rem 0.8rem;position:relative;border-top:2px solid transparent;transition:border-color 0.15s}
+.mt-ahead-bud{border-top-color:var(--green)}
+.mt-behind-bud{border-top-color:var(--red)}
+.mt-no-bud{border-top-color:var(--muted);opacity:0.7}
+.mt-empty{border-top-color:var(--border);opacity:0.4}
+
+.mt-month{font-family:'DM Mono',monospace;font-size:0.52rem;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted);margin-bottom:0.4rem}
+.mt-occ-bar-wrap{height:4px;background:rgba(255,255,255,0.06);border-radius:2px;margin-bottom:0.5rem;overflow:hidden;position:relative}
+.mt-occ-bar{height:100%;border-radius:2px;transition:width 0.9s cubic-bezier(0.16,1,0.3,1)}
+.mt-occ-bar.pace-ahead{background:var(--green)}
+.mt-occ-bar.pace-behind{background:var(--red)}
+.mt-occ-bar.pace-neutral{background:var(--blue)}
+.mt-ly-tick{position:absolute;top:0;bottom:0;width:2px;background:rgba(91,155,213,0.7)}
+
+.mt-rev{font-family:'DM Mono',monospace;font-size:0.7rem;font-weight:500;letter-spacing:0.04em;line-height:1}
+.mt-occ{font-size:0.72rem;font-weight:600;line-height:1;margin-top:0.2rem}
+.mt-adr{font-family:'DM Mono',monospace;font-size:0.56rem;color:var(--muted);margin-top:0.15rem}
+.mt-comps{margin-top:0.4rem;display:flex;flex-direction:column;gap:2px}
+.mt-comp-row{display:flex;align-items:center;gap:4px;font-family:'DM Mono',monospace;font-size:0.5rem;letter-spacing:0.04em}
+.comp-dot{width:5px;height:5px;border-radius:1px;flex-shrink:0}
+.cd-bud{background:var(--gold)}
+.cd-ly{background:var(--blue)}
+.gap-label{font-family:'DM Mono',monospace;font-size:0.48rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-top:0.3rem}
+.gap-val{font-family:'DM Mono',monospace;font-size:0.6rem}
+.gap-red{color:var(--red)}
+.gap-grn{color:var(--green)}
+
+.pace-legend{display:flex;gap:1.5rem;align-items:center;padding:0.6rem 2.5vw;background:var(--surface2);border-bottom:1px solid var(--border);flex-wrap:wrap}
+.pl-item{display:flex;align-items:center;gap:0.35rem;font-family:'DM Mono',monospace;font-size:0.56rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted)}
+.pl-bar{width:16px;height:4px;border-radius:2px}
+
+@media(max-width:700px){
+  .otb-unit-row{grid-template-columns:1fr}
+  .month-track-grid{grid-template-columns:repeat(3,1fr)}
+  .otb-summary-row{grid-template-columns:1fr 1fr}
+}
+
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand-line">
+    <span class="brand-top">zZZing Holiday Homes · Revenue Intelligence</span>
+    <span class="brand-title">2026 <span>Performance</span> Dashboard</span>
+  </div>
+  <div class="header-right">
+    <div class="header-period">Jan–Apr Actuals + May–Sep OTB<br>vs Budget · vs 2025 (LYST)<br>Report date: 20 Apr 2026</div>
+  </div>
+</header>
+
+<div class="tab-nav">
+  <button class="tab-btn active" onclick="switchTab('actuals',this)">📊 Jan–Apr Actuals</button>
+  <button class="tab-btn" onclick="switchTab('otb',this)">📅 Forward OTB · May–Sep</button>
+</div>
+
+<!-- TAB 1: ACTUALS -->
+<div class="tab-panel active" id="tab-actuals">
+<div class="legend-bar">
+  <div class="leg"><div class="leg-dot ld-act"></div>2026 Actual</div>
+  <div class="leg"><div class="leg-dot ld-bud"></div>Budget 2026</div>
+  <div class="leg"><div class="leg-dot ld-ly"></div>2025 (LYST)</div>
+  <div style="margin-left:1rem;display:flex;gap:0.5rem;align-items:center">
+    <span class="leg" style="color:var(--green)">▲ Above</span>
+    <span class="leg" style="color:var(--red)">▼ Below</span>
+    <span style="width:1px;height:12px;background:var(--border);display:inline-block;margin:0 0.5rem"></span>
+    <span class="badge badge-new" style="font-size:0.5rem">NEW UNIT</span>
+    <span class="badge badge-no-ly" style="font-size:0.5rem">NO LYST</span>
+    <span class="badge badge-no-bud" style="font-size:0.5rem">NO BUDGET</span>
+  </div>
+</div>
+
+<div class="filter-row">
+  <span class="filter-label">Filter:</span>
+  <button class="ftab active" onclick="filterUnits('all',this)">All Units</button>
+  <button class="ftab" onclick="filterUnits('above-budget',this)">▲ Above Budget</button>
+  <button class="ftab" onclick="filterUnits('below-budget',this)">▼ Below Budget</button>
+  <button class="ftab" onclick="filterUnits('above-lyst',this)">▲ Above LYST</button>
+  <button class="ftab" onclick="filterUnits('below-lyst',this)">▼ Below LYST</button>
+  <button class="ftab new-tag" onclick="filterUnits('new',this)">New Units</button>
+</div>
+
+<div class="summary-row" id="summaryRow"></div>
+<div class="main-grid" id="mainGrid"></div>
+
+<footer>
+  <span>zZZing Holiday Homes · Multi-Unit Pickup Report</span>
+  <span>20 April 2026 · Strategy Cues</span>
+</footer>
+
+
+</div>
+
+<!-- TAB 2: FORWARD OTB -->
+<div class="tab-panel" id="tab-otb">
+
+<div class="pace-legend">
+  <div class="pl-item"><div class="pl-bar" style="background:var(--green)"></div>OTB Occ — Ahead of LYST pace</div>
+  <div class="pl-item"><div class="pl-bar" style="background:var(--red)"></div>OTB Occ — Behind LYST pace</div>
+  <div class="pl-item"><div class="pl-bar" style="background:var(--blue)"></div>LYST Occ reference line</div>
+  <div class="pl-item"><span style="width:8px;height:8px;border-radius:2px;background:var(--gold);display:inline-block"></span>Budget benchmark</div>
+  <div style="margin-left:auto;font-family:'DM Mono',monospace;font-size:0.56rem;letter-spacing:0.1em;color:var(--muted);text-transform:uppercase">Top bar colour = vs Budget · Green = ahead · Red = behind</div>
+</div>
+
+<div class="otb-summary-row" id="otbSummary"></div>
+<div class="otb-alert-bar" id="otbAlerts"></div>
+<div class="otb-grid" id="otbGrid"></div>
+
+<footer>
+  <span>zZZing Holiday Homes · Forward OTB · May–Sep 2026</span>
+  <span>As at 20 April 2026 · Strategy Cues</span>
+</footer>
+
+</div>
+
+<script>
+// ── TAB SWITCHER ──
+function switchTab(tab, btn) {
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('tab-'+tab).classList.add('active');
+  if (tab === 'otb' && !window._otbBuilt) { buildOTB(); window._otbBuilt = true; }
+}
+
+// ── OTB DATA ──
+const FWD_MONTHS = ['May','Jun','Jul','Aug','Sep'];
+
+const OTB = {"El Doris": {"May": {"otb_rev": 37648, "otb_occ": 57.0, "otb_adr": 142.0, "bud_rev": 57039, "bud_occ": null, "ly_rev": 42120, "ly_occ": 68.0, "ly_adr": 125.0}, "Jun": {"otb_rev": 28658, "otb_occ": 42.7, "otb_adr": 140.0, "bud_rev": 58321, "bud_occ": null, "ly_rev": 29467, "ly_occ": 43.0, "ly_adr": 142.0}, "Jul": {"otb_rev": 25583, "otb_occ": 37.2, "otb_adr": 134.0, "bud_rev": 65906, "bud_occ": null, "ly_rev": 13087, "ly_occ": 19.0, "ly_adr": 138.0}, "Aug": {"otb_rev": 22252, "otb_occ": 29.8, "otb_adr": 150.0, "bud_rev": 78445, "bud_occ": null, "ly_rev": 21760, "ly_occ": 30.0, "ly_adr": 146.0}, "Sep": {"otb_rev": 15603, "otb_occ": 24.6, "otb_adr": 132.0, "bud_rev": 62213, "bud_occ": null, "ly_rev": 25703, "ly_occ": 40.0, "ly_adr": 132.0}}, "El Doris SJ": {"May": {"otb_rev": 39352, "otb_occ": 64.9, "otb_adr": 119.0, "bud_rev": 58136, "bud_occ": null, "ly_rev": 39700, "ly_occ": 77.0, "ly_adr": 104.0}, "Jun": {"otb_rev": 45883, "otb_occ": 71.6, "otb_adr": 126.0, "bud_rev": 59442, "bud_occ": null, "ly_rev": 33323, "ly_occ": 59.0, "ly_adr": 117.0}, "Jul": {"otb_rev": 29978, "otb_occ": 38.5, "otb_adr": 146.0, "bud_rev": 67174, "bud_occ": null, "ly_rev": 28204, "ly_occ": 44.0, "ly_adr": 130.0}, "Aug": {"otb_rev": 33060, "otb_occ": 39.5, "otb_adr": 160.0, "bud_rev": 79953, "bud_occ": null, "ly_rev": 18197, "ly_occ": 25.0, "ly_adr": 146.0}, "Sep": {"otb_rev": 15046, "otb_occ": 16.0, "otb_adr": 195.0, "bud_rev": 63409, "bud_occ": null, "ly_rev": 26998, "ly_occ": 48.0, "ly_adr": 118.0}}, "Euginea  Court": {"May": {"otb_rev": 0, "otb_occ": 0.0, "otb_adr": 0.0, "bud_rev": null, "bud_occ": null, "ly_rev": null, "ly_occ": null, "ly_adr": null}, "Jun": {"otb_rev": 0, "otb_occ": 0.0, "otb_adr": 0.0, "bud_rev": null, "bud_occ": null, "ly_rev": null, "ly_occ": null, "ly_adr": null}, "Jul": {"otb_rev": 4521, "otb_occ": 21.9, "otb_adr": 133.0, "bud_rev": null, "bud_occ": null, "ly_rev": null, "ly_occ": null, "ly_adr": null}, "Aug": {"otb_rev": 3639, "otb_occ": 20.6, "otb_adr": 114.0, "bud_rev": null, "bud_occ": null, "ly_rev": null, "ly_occ": null, "ly_adr": null}, "Sep": {"otb_rev": 0, "otb_occ": 0.0, "otb_adr": 0.0, "bud_rev": null, "bud_occ": null, "ly_rev": null, "ly_occ": null, "ly_adr": null}}, "Florian Boutique": {"May": {"otb_rev": 11806, "otb_occ": 60.7, "otb_adr": 126.0, "bud_rev": 14367, "bud_occ": null, "ly_rev": 8806, "ly_occ": 53.0, "ly_adr": 107.0}, "Jun": {"otb_rev": 4934, "otb_occ": 32.0, "otb_adr": 103.0, "bud_rev": 14690, "bud_occ": null, "ly_rev": 3951, "ly_occ": 23.0, "ly_adr": 116.0}, "Jul": {"otb_rev": 4521, "otb_occ": 21.9, "otb_adr": 133.0, "bud_rev": 16601, "bud_occ": null, "ly_rev": 3267, "ly_occ": 17.0, "ly_adr": 121.0}, "Aug": {"otb_rev": 3639, "otb_occ": 20.6, "otb_adr": 114.0, "bud_rev": 19759, "bud_occ": null, "ly_rev": 3358, "ly_occ": 19.0, "ly_adr": 112.0}, "Sep": {"otb_rev": 0, "otb_occ": 0.0, "otb_adr": 0.0, "bud_rev": 15671, "bud_occ": null, "ly_rev": 4610, "ly_occ": 20.0, "ly_adr": 154.0}}, "Mensija Valley": {"May": {"otb_rev": 33595, "otb_occ": 56.8, "otb_adr": 191.0, "bud_rev": 42229, "bud_occ": null, "ly_rev": 39095, "ly_occ": 62.0, "ly_adr": 171.0}, "Jun": {"otb_rev": 29106, "otb_occ": 47.0, "otb_adr": 206.0, "bud_rev": 43178, "bud_occ": null, "ly_rev": 35706, "ly_occ": 51.0, "ly_adr": 195.0}, "Jul": {"otb_rev": 34368, "otb_occ": 37.5, "otb_adr": 277.0, "bud_rev": 48794, "bud_occ": null, "ly_rev": 35586, "ly_occ": 37.0, "ly_adr": 266.0}, "Aug": {"otb_rev": 31559, "otb_occ": 39.7, "otb_adr": 257.0, "bud_rev": 58077, "bud_occ": null, "ly_rev": 52780, "ly_occ": 55.0, "ly_adr": 260.0}, "Sep": {"otb_rev": 37502, "otb_occ": 55.3, "otb_adr": 226.0, "bud_rev": 46060, "bud_occ": null, "ly_rev": 25452, "ly_occ": 36.0, "ly_adr": 196.0}}, "Mosta Stays": {"May": {"otb_rev": 38358, "otb_occ": 45.1, "otb_adr": 107.0, "bud_rev": 68670, "bud_occ": null, "ly_rev": 40283, "ly_occ": 53.0, "ly_adr": 98.0}, "Jun": {"otb_rev": 28915, "otb_occ": 37.9, "otb_adr": 102.0, "bud_rev": 70214, "bud_occ": null, "ly_rev": 26083, "ly_occ": 33.0, "ly_adr": 106.0}, "Jul": {"otb_rev": 12320, "otb_occ": 12.3, "otb_adr": 130.0, "bud_rev": 79346, "bud_occ": null, "ly_rev": 11214, "ly_occ": 11.0, "ly_adr": 126.0}, "Aug": {"otb_rev": 13142, "otb_occ": 13.0, "otb_adr": 130.0, "bud_rev": 94442, "bud_occ": null, "ly_rev": 21254, "ly_occ": 22.0, "ly_adr": 124.0}, "Sep": {"otb_rev": 13655, "otb_occ": 10.0, "otb_adr": 182.0, "bud_rev": 74900, "bud_occ": null, "ly_rev": 27568, "ly_occ": 33.0, "ly_adr": 111.0}}, "Seashore Stays": {"May": {"otb_rev": 19917, "otb_occ": 50.0, "otb_adr": 143.0, "bud_rev": 25412, "bud_occ": null, "ly_rev": 15241, "ly_occ": 53.0, "ly_adr": 133.0}, "Jun": {"otb_rev": 23839, "otb_occ": 58.7, "otb_adr": 164.0, "bud_rev": 25984, "bud_occ": null, "ly_rev": 16233, "ly_occ": 47.0, "ly_adr": 166.0}, "Jul": {"otb_rev": 13278, "otb_occ": 29.4, "otb_adr": 182.0, "bud_rev": 29363, "bud_occ": null, "ly_rev": 18201, "ly_occ": 46.0, "ly_adr": 184.0}, "Aug": {"otb_rev": 15762, "otb_occ": 31.9, "otb_adr": 200.0, "bud_rev": 34949, "bud_occ": null, "ly_rev": 22551, "ly_occ": 58.0, "ly_adr": 179.0}, "Sep": {"otb_rev": 3796, "otb_occ": 6.2, "otb_adr": 253.0, "bud_rev": 27717, "bud_occ": null, "ly_rev": 19422, "ly_occ": 56.0, "ly_adr": 166.0}}, "Seaview Stays": {"May": {"otb_rev": 41620, "otb_occ": 44.2, "otb_adr": 116.0, "bud_rev": 79077, "bud_occ": null, "ly_rev": 59219, "ly_occ": 61.0, "ly_adr": 120.0}, "Jun": {"otb_rev": 40982, "otb_occ": 45.1, "otb_adr": 116.0, "bud_rev": 80854, "bud_occ": null, "ly_rev": 54002, "ly_occ": 52.0, "ly_adr": 132.0}, "Jul": {"otb_rev": 21134, "otb_occ": 20.7, "otb_adr": 127.0, "bud_rev": 91370, "bud_occ": null, "ly_rev": 38859, "ly_occ": 32.0, "ly_adr": 151.0}, "Aug": {"otb_rev": 10091, "otb_occ": 11.0, "otb_adr": 113.0, "bud_rev": 108753, "bud_occ": null, "ly_rev": 44687, "ly_occ": 32.0, "ly_adr": 171.0}, "Sep": {"otb_rev": 13605, "otb_occ": 9.6, "otb_adr": 181.0, "bud_rev": 86250, "bud_occ": null, "ly_rev": 44525, "ly_occ": 42.0, "ly_adr": 135.0}}, "Segond Boutique": {"May": {"otb_rev": 58210, "otb_occ": 44.0, "otb_adr": 83.0, "bud_rev": null, "bud_occ": null, "ly_rev": 52564, "ly_occ": 46.0, "ly_adr": 73.0}, "Jun": {"otb_rev": 32234, "otb_occ": 22.4, "otb_adr": 89.0, "bud_rev": null, "bud_occ": null, "ly_rev": 36068, "ly_occ": 28.0, "ly_adr": 85.0}, "Jul": {"otb_rev": 18512, "otb_occ": 9.5, "otb_adr": 117.0, "bud_rev": null, "bud_occ": null, "ly_rev": 33827, "ly_occ": 23.0, "ly_adr": 95.0}, "Aug": {"otb_rev": 23950, "otb_occ": 12.5, "otb_adr": 105.0, "bud_rev": null, "bud_occ": null, "ly_rev": 21108, "ly_occ": 13.0, "ly_adr": 107.0}, "Sep": {"otb_rev": 10904, "otb_occ": 6.3, "otb_adr": 114.0, "bud_rev": null, "bud_occ": null, "ly_rev": 13832, "ly_occ": 9.0, "ly_adr": 95.0}}, "South 32 Hotel": {"May": {"otb_rev": 65093, "otb_occ": 62.9, "otb_adr": 99.0, "bud_rev": 70700, "bud_occ": null, "ly_rev": null, "ly_occ": null, "ly_adr": null}, "Jun": {"otb_rev": 32629, "otb_occ": 30.0, "otb_adr": 113.0, "bud_rev": 85000, "bud_occ": null, "ly_rev": null, "ly_occ": null, "ly_adr": null}, "Jul": {"otb_rev": 29435, "otb_occ": 25.1, "otb_adr": 118.0, "bud_rev": 110000, "bud_occ": null, "ly_rev": null, "ly_occ": null, "ly_adr": null}, "Aug": {"otb_rev": 7324, "otb_occ": 6.0, "otb_adr": 122.0, "bud_rev": 110000, "bud_occ": null, "ly_rev": null, "ly_occ": null, "ly_adr": null}, "Sep": {"otb_rev": 2550, "otb_occ": 1.6, "otb_adr": 170.0, "bud_rev": 109000, "bud_occ": null, "ly_rev": null, "ly_occ": null, "ly_adr": null}}, "Spinola Stays": {"May": {"otb_rev": 40838, "otb_occ": 55.1, "otb_adr": 129.0, "bud_rev": 65403, "bud_occ": null, "ly_rev": 42267, "ly_occ": 65.0, "ly_adr": 116.0}, "Jun": {"otb_rev": 38661, "otb_occ": 45.5, "otb_adr": 153.0, "bud_rev": 66873, "bud_occ": null, "ly_rev": 35097, "ly_occ": 50.0, "ly_adr": 131.0}, "Jul": {"otb_rev": 41621, "otb_occ": 38.9, "otb_adr": 185.0, "bud_rev": 75570, "bud_occ": null, "ly_rev": 35184, "ly_occ": 44.0, "ly_adr": 142.0}, "Aug": {"otb_rev": 29620, "otb_occ": 23.7, "otb_adr": 224.0, "bud_rev": 89948, "bud_occ": null, "ly_rev": 31181, "ly_occ": 39.0, "ly_adr": 145.0}, "Sep": {"otb_rev": 18780, "otb_occ": 14.1, "otb_adr": 247.0, "bud_rev": 71336, "bud_occ": null, "ly_rev": 24956, "ly_occ": 31.0, "ly_adr": 148.0}}, "Stuart": {"May": {"otb_rev": 42574, "otb_occ": 56.3, "otb_adr": 121.0, "bud_rev": 64962, "bud_occ": null, "ly_rev": 39487, "ly_occ": 55.0, "ly_adr": 115.0}, "Jun": {"otb_rev": 28424, "otb_occ": 39.2, "otb_adr": 121.0, "bud_rev": 66423, "bud_occ": null, "ly_rev": 31339, "ly_occ": 46.0, "ly_adr": 115.0}, "Jul": {"otb_rev": 4323, "otb_occ": 5.5, "otb_adr": 127.0, "bud_rev": 75061, "bud_occ": null, "ly_rev": 11418, "ly_occ": 14.0, "ly_adr": 131.0}, "Aug": {"otb_rev": 5259, "otb_occ": 7.3, "otb_adr": 117.0, "bud_rev": 89342, "bud_occ": null, "ly_rev": 2527, "ly_occ": 3.0, "ly_adr": 120.0}, "Sep": {"otb_rev": 790, "otb_occ": 0.8, "otb_adr": 158.0, "bud_rev": 70855, "bud_occ": null, "ly_rev": 15092, "ly_occ": 22.0, "ly_adr": 114.0}}, "Ta Gianni": {"May": {"otb_rev": 11013, "otb_occ": 57.5, "otb_adr": 103.0, "bud_rev": 13287, "bud_occ": null, "ly_rev": 9503, "ly_occ": 58.0, "ly_adr": 88.0}, "Jun": {"otb_rev": 9191, "otb_occ": 49.4, "otb_adr": 103.0, "bud_rev": 13586, "bud_occ": null, "ly_rev": 9583, "ly_occ": 57.0, "ly_adr": 93.0}, "Jul": {"otb_rev": 2119, "otb_occ": 16.1, "otb_adr": 71.0, "bud_rev": 15353, "bud_occ": null, "ly_rev": 9578, "ly_occ": 48.0, "ly_adr": 106.0}, "Aug": {"otb_rev": 3501, "otb_occ": 29.6, "otb_adr": 64.0, "bud_rev": 18274, "bud_occ": null, "ly_rev": 10941, "ly_occ": 52.0, "ly_adr": 113.0}, "Sep": {"otb_rev": 1383, "otb_occ": 12.2, "otb_adr": 63.0, "bud_rev": 14492, "bud_occ": null, "ly_rev": 5741, "ly_occ": 37.0, "ly_adr": 86.0}}, "Ta Guzzepi": {"May": {"otb_rev": 12120, "otb_occ": 40.5, "otb_adr": 107.0, "bud_rev": 24568, "bud_occ": null, "ly_rev": null, "ly_occ": null, "ly_adr": null}, "Jun": {"otb_rev": 10610, "otb_occ": 34.4, "otb_adr": 114.0, "bud_rev": 25120, "bud_occ": null, "ly_rev": null, "ly_occ": null, "ly_adr": null}, "Jul": {"otb_rev": 6638, "otb_occ": 21.1, "otb_adr": 113.0, "bud_rev": 28387, "bud_occ": null, "ly_rev": null, "ly_occ": null, "ly_adr": null}, "Aug": {"otb_rev": 7701, "otb_occ": 25.1, "otb_adr": 110.0, "bud_rev": 33788, "bud_occ": null, "ly_rev": null, "ly_occ": null, "ly_adr": null}, "Sep": {"otb_rev": 3460, "otb_occ": 13.7, "otb_adr": 94.0, "bud_rev": 26796, "bud_occ": null, "ly_rev": null, "ly_adr": null}}, "Yolanda Boutique": {"May": {"otb_rev": 40404, "otb_occ": 77.9, "otb_adr": 120.0, "bud_rev": 48275, "bud_occ": null, "ly_rev": null, "ly_occ": null, "ly_adr": null}, "Jun": {"otb_rev": 21003, "otb_occ": 36.9, "otb_adr": 136.0, "bud_rev": 49360, "bud_occ": null, "ly_rev": null, "ly_occ": null, "ly_adr": null}, "Jul": {"otb_rev": 6853, "otb_occ": 12.2, "otb_adr": 129.0, "bud_rev": 55780, "bud_occ": null, "ly_rev": null, "ly_occ": null, "ly_adr": null}, "Aug": {"otb_rev": 3093, "otb_occ": 4.6, "otb_adr": 155.0, "bud_rev": 66392, "bud_occ": null, "ly_rev": null, "ly_occ": null, "ly_adr": null}, "Sep": {"otb_rev": 4235, "otb_occ": 7.1, "otb_adr": 141.0, "bud_rev": 52654, "bud_occ": null, "ly_rev": null, "ly_occ": null, "ly_adr": null}}};
+
+function fmtK(v){ if(!v) return '€0'; return v>=1000?'€'+(v/1000).toFixed(1)+'k':'€'+v; }
+function fmtOcc(v){ return v===null||v===undefined?'—':v.toFixed(1)+'%'; }
+
+function buildOTBSummary(){
+  let totOTB=0, totBud=0, totLY=0, urgentUnits=new Set();
+  for(const u of Object.keys(OTB)){
+    for(const m of FWD_MONTHS){
+      const d=OTB[u][m]; if(!d) continue;
+      totOTB+=d.otb_rev||0;
+      if(d.bud_rev) totBud+=d.bud_rev;
+      if(d.ly_rev&&d.ly_rev>0) totLY+=d.ly_rev;
+      if(d.bud_rev && d.otb_occ<30 && d.bud_rev>30000) urgentUnits.add(u);
+    }
+  }
+  const budGap = totBud - totOTB;
+  const lyVar = totLY ? ((totOTB-totLY)/totLY*100) : null;
+  document.getElementById('otbSummary').innerHTML = `
+    <div class="sum-card"><div class="sum-label">Total OTB · May–Sep</div><div class="sum-val">${fmtK(totOTB)}</div><div class="sum-sub">Revenue on the books today</div></div>
+    <div class="sum-card"><div class="sum-label">Budget Target · May–Sep</div><div class="sum-val">${fmtK(totBud)}</div><div class="sum-sub"><span class="${budGap>0?'neg':'pos'}">${budGap>0?'▼':''} €${Math.abs(budGap/1000).toFixed(0)}k gap to fill</span></div></div>
+    <div class="sum-card"><div class="sum-label">vs LYST Pace</div><div class="sum-val" style="color:${lyVar===null?'var(--muted)':lyVar>=0?'var(--green)':'var(--red)'}">${lyVar===null?'N/A':(lyVar>=0?'▲':'▼')+Math.abs(lyVar).toFixed(1)+'%'}</div><div class="sum-sub">vs same period 2025 OTB</div></div>
+    <div class="sum-card"><div class="sum-label">Units Needing Attention</div><div class="sum-val" style="color:var(--orange)">${urgentUnits.size}</div><div class="sum-sub">&lt;30% OTB occ with high budget targets</div></div>
+  `;
+}
+
+function buildOTBAlerts(){
+  const alerts=[];
+  for(const u of Object.keys(OTB)){
+    for(const m of FWD_MONTHS){
+      const d=OTB[u][m]; if(!d||!d.otb_occ) continue;
+      if(d.bud_rev && d.otb_occ < 20 && d.bud_rev > 40000) alerts.push({unit:u,month:m,occ:d.otb_occ,gap:d.bud_rev-d.otb_rev,level:'danger'});
+      else if(d.bud_rev && d.otb_occ < 35 && d.bud_rev > 50000) alerts.push({unit:u,month:m,occ:d.otb_occ,gap:d.bud_rev-d.otb_rev,level:'warn'});
+    }
+  }
+  const chips = alerts.map(a=>`<span class="alert-chip ${a.level==='danger'?'danger':''}">${a.unit} · ${a.month} · ${a.occ.toFixed(0)}% OTB · €${(a.gap/1000).toFixed(0)}k gap</span>`).join('');
+  document.getElementById('otbAlerts').innerHTML =
+    `<span class="alert-title">⚠ Action Required</span><div class="alert-chips">${chips||'<span style="font-family:DM Mono,monospace;font-size:0.6rem;color:var(--muted)">No critical alerts</span>'}</div>`;
+}
+
+function buildOTBGrid(){
+  const grid = document.getElementById('otbGrid');
+  const units = Object.keys(OTB).filter(u => FWD_MONTHS.some(m => OTB[u][m] && OTB[u][m].otb_rev > 0));
+
+  grid.innerHTML = units.map(unit => {
+    const ud = OTB[unit];
+    const totOTB = FWD_MONTHS.reduce((s,m)=>s+(ud[m]?.otb_rev||0),0);
+    const totBud = FWD_MONTHS.reduce((s,m)=>s+(ud[m]?.bud_rev||0),0);
+    const gap = totBud ? totBud - totOTB : null;
+
+    const tracks = FWD_MONTHS.map(m => {
+      const d = ud[m];
+      if (!d || (d.otb_rev === 0 && d.otb_occ === 0)) {
+        return `<div class="month-track mt-empty"><div class="mt-month">${m}</div><div class="no-data" style="font-size:0.52rem;color:var(--muted);font-family:'DM Mono',monospace">No OTB</div></div>`;
+      }
+      const hasBud = d.bud_rev !== null;
+      const hasLY  = d.ly_occ !== null && d.ly_occ > 0;
+      const pace   = hasLY ? (d.otb_occ >= d.ly_occ ? 'ahead' : 'behind') : 'neutral';
+      const topCls = hasBud ? (d.otb_rev >= d.bud_rev ? 'mt-ahead-bud' : 'mt-behind-bud') : 'mt-no-bud';
+      const barW   = Math.min(100, d.otb_occ);
+      const lyTickPos = hasLY ? Math.min(100, d.ly_occ) : null;
+      const revGap = hasBud ? d.bud_rev - d.otb_rev : null;
+      const occStyle = d.otb_occ >= 60 ? 'color:var(--green)' : d.otb_occ < 30 ? 'color:var(--red)' : 'color:var(--white)';
+
+      return `<div class="month-track ${topCls}">
+        <div class="mt-month">${m}</div>
+        <div class="mt-occ-bar-wrap">
+          <div class="mt-occ-bar pace-${pace}" data-w="${barW}%" style="width:0%"></div>
+          ${lyTickPos!==null ? `<div class="mt-ly-tick" style="left:${lyTickPos}%"></div>` : ''}
+        </div>
+        <div class="mt-rev">${fmtK(d.otb_rev)}</div>
+        <div class="mt-occ" style="${occStyle}">${fmtOcc(d.otb_occ)}</div>
+        <div class="mt-adr">ADR €${d.otb_adr||'—'}</div>
+        <div class="mt-comps">
+          ${hasBud ? `<div class="mt-comp-row"><div class="comp-dot cd-bud"></div><span style="color:var(--muted)">${fmtK(d.bud_rev)}</span></div>` : ''}
+          ${hasLY  ? `<div class="mt-comp-row"><div class="comp-dot cd-ly"></div><span style="color:var(--muted)">${fmtK(d.ly_rev)} · ${d.ly_occ}%</span></div>` : ''}
+        </div>
+        ${revGap!==null ? `<div class="gap-label">Gap to bud</div><div class="gap-val ${revGap>0?'gap-red':'gap-grn'}">${revGap>0?'+':'-'}${fmtK(Math.abs(revGap))}</div>` : ''}
+      </div>`;
+    }).join('');
+
+    return `<div class="otb-unit-row">
+      <div>
+        <div class="otb-unit-name">${unit}</div>
+        <div class="otb-unit-total">OTB total: ${fmtK(totOTB)}</div>
+        ${gap!==null ? `<div style="font-family:'DM Mono',monospace;font-size:0.56rem;margin-top:0.3rem;color:${gap>0?'var(--red)':'var(--green)'}">
+          ${gap>0?'▼ €'+(gap/1000).toFixed(0)+'k behind budget':'▲ €'+Math.abs(gap/1000).toFixed(0)+'k ahead'}
+        </div>` : '<div style="font-family:DM Mono,monospace;font-size:0.5rem;color:var(--muted);margin-top:0.2rem">No budget set</div>'}
+      </div>
+      <div class="month-track-grid">${tracks}</div>
+    </div>`;
+  }).join('');
+
+  // Animate bars
+  setTimeout(()=>{
+    document.querySelectorAll('.mt-occ-bar[data-w]').forEach(el=>{
+      el.style.width = el.getAttribute('data-w');
+    });
+  }, 120);
+}
+
+function buildOTB(){
+  buildOTBSummary();
+  buildOTBAlerts();
+  buildOTBGrid();
+}
+
+const MONTHS = ['Jan','Feb','Mar','Apr'];
+
+const DATA = {"El Doris": {"Jan": {"act_rev": 23690, "act_adr": 74.0, "act_occ": 69.9, "bud_rev": 18377, "bud_adr": null, "bud_occ": null, "ly_rev": 17486, "ly_adr": 62.0, "ly_occ": 59.0}, "Feb": {"act_rev": 24840, "act_adr": 72.0, "act_occ": 80.9, "bud_rev": 15836, "bud_adr": null, "bud_occ": null, "ly_rev": 15068, "ly_adr": 60.0, "ly_occ": 56.0}, "Mar": {"act_rev": 34100, "act_adr": 81.0, "act_occ": 90.8, "bud_rev": 31839, "bud_adr": null, "bud_occ": null, "ly_rev": 30294, "ly_adr": 70.0, "ly_occ": 87.0}, "Apr": {"act_rev": 43885, "act_adr": 108.0, "act_occ": 90.2, "bud_rev": 47283, "bud_adr": null, "bud_occ": null, "ly_rev": 43919, "ly_adr": 95.0, "ly_occ": 96.0}}, "El Doris SJ": {"Jan": {"act_rev": 17724, "act_adr": 59.0, "act_occ": 60.4, "bud_rev": 18730, "bud_adr": null, "bud_occ": null, "ly_rev": null, "ly_adr": 0.0, "ly_occ": 0.0}, "Feb": {"act_rev": 17185, "act_adr": 63.0, "act_occ": 61.2, "bud_rev": 16141, "bud_adr": null, "bud_occ": null, "ly_rev": 3609, "ly_adr": 43.0, "ly_occ": 23.0}, "Mar": {"act_rev": 26333, "act_adr": 64.0, "act_occ": 83.5, "bud_rev": 32452, "bud_adr": null, "bud_occ": null, "ly_rev": 19094, "ly_adr": 62.0, "ly_occ": 62.0}, "Apr": {"act_rev": 44426, "act_adr": 100.0, "act_occ": 92.8, "bud_rev": 48192, "bud_adr": null, "bud_occ": null, "ly_rev": 40515, "ly_adr": 89.0, "ly_occ": 94.0}}, "Florian Boutique": {"Jan": {"act_rev": 4151, "act_adr": 53.0, "act_occ": 51.7, "bud_rev": 4629, "bud_adr": null, "bud_occ": null, "ly_rev": 5389, "ly_adr": 60.0, "ly_occ": 57.0}, "Feb": {"act_rev": 4135, "act_adr": 53.0, "act_occ": 56.1, "bud_rev": 3989, "bud_adr": null, "bud_occ": null, "ly_rev": 4821, "ly_adr": 57.0, "ly_occ": 60.0}, "Mar": {"act_rev": 7445, "act_adr": 60.0, "act_occ": 80.0, "bud_rev": 8020, "bud_adr": null, "bud_occ": null, "ly_rev": 7963, "ly_adr": 67.0, "ly_occ": 75.0}, "Apr": {"act_rev": 11839, "act_adr": 90.0, "act_occ": 88.0, "bud_rev": 11910, "bud_adr": null, "bud_occ": null, "ly_rev": 13093, "ly_adr": 99.0, "ly_occ": 89.0}}, "Mensija Valley": {"Jan": {"act_rev": 9735, "act_adr": 64.0, "act_occ": 49.4, "bud_rev": 13605, "bud_adr": null, "bud_occ": null, "ly_rev": 13097, "ly_adr": 61.0, "ly_occ": 62.0}, "Feb": {"act_rev": 12773, "act_adr": 58.0, "act_occ": 78.8, "bud_rev": 11724, "bud_adr": null, "bud_occ": null, "ly_rev": 17503, "ly_adr": 69.0, "ly_occ": 84.0}, "Mar": {"act_rev": 18130, "act_adr": 75.0, "act_occ": 80.1, "bud_rev": 23572, "bud_adr": null, "bud_occ": null, "ly_rev": 18241, "ly_adr": 74.0, "ly_occ": 70.0}, "Apr": {"act_rev": 31086, "act_adr": 138.0, "act_occ": 75.3, "bud_rev": 35006, "bud_adr": null, "bud_occ": null, "ly_rev": 37752, "ly_adr": 132.0, "ly_occ": 82.0}}, "Mosta Stays": {"Jan": {"act_rev": 17410, "act_adr": 44.0, "act_occ": 55.5, "bud_rev": 22124, "bud_adr": null, "bud_occ": null, "ly_rev": 10148, "ly_adr": 42.0, "ly_occ": 31.0}, "Feb": {"act_rev": 22013, "act_adr": 46.0, "act_occ": 71.9, "bud_rev": 19066, "bud_adr": null, "bud_occ": null, "ly_rev": 19029, "ly_adr": 43.0, "ly_occ": 66.0}, "Mar": {"act_rev": 32580, "act_adr": 49.0, "act_occ": 90.1, "bud_rev": 38332, "bud_adr": null, "bud_occ": null, "ly_rev": 30058, "ly_adr": 52.0, "ly_occ": 75.0}, "Apr": {"act_rev": 53024, "act_adr": 75.0, "act_occ": 94.0, "bud_rev": 56925, "bud_adr": null, "bud_occ": null, "ly_rev": 49603, "ly_adr": 73.0, "ly_occ": 90.0}}, "Rest Restore Explore": {"Jan": {"act_rev": 4001, "act_adr": 39.0, "act_occ": 56.0, "bud_rev": null, "bud_adr": null, "bud_occ": null, "ly_rev": null, "ly_adr": null, "ly_occ": null}, "Feb": {"act_rev": 4216, "act_adr": 44.0, "act_occ": 56.9, "bud_rev": null, "bud_adr": null, "bud_occ": null, "ly_rev": null, "ly_adr": null, "ly_occ": null}, "Mar": {"act_rev": 7534, "act_adr": 50.0, "act_occ": 81.6, "bud_rev": null, "bud_adr": null, "bud_occ": null, "ly_rev": null, "ly_adr": null, "ly_occ": null}}, "Seashore Stays": {"Jan": {"act_rev": 5716, "act_adr": 79.0, "act_occ": 33.3, "bud_rev": 8187, "bud_adr": null, "bud_occ": null, "ly_rev": 7586, "ly_adr": 68.0, "ly_occ": 51.0}, "Feb": {"act_rev": 7569, "act_adr": 66.0, "act_occ": 54.7, "bud_rev": 7055, "bud_adr": null, "bud_occ": null, "ly_rev": 7417, "ly_adr": 64.0, "ly_occ": 59.0}, "Mar": {"act_rev": 13041, "act_adr": 75.0, "act_occ": 70.2, "bud_rev": 14185, "bud_adr": null, "bud_occ": null, "ly_rev": 10747, "ly_adr": 83.0, "ly_occ": 61.0}, "Apr": {"act_rev": 19286, "act_adr": 106.0, "act_occ": 75.8, "bud_rev": 21066, "bud_adr": null, "bud_occ": null, "ly_rev": 19090, "ly_adr": 113.0, "ly_occ": 81.0}}, "Seaview Stays": {"Jan": {"act_rev": 24531, "act_adr": 46.0, "act_occ": 68.3, "bud_rev": 25477, "bud_adr": null, "bud_occ": null, "ly_rev": 27267, "ly_adr": 46.0, "ly_occ": 73.0}, "Feb": {"act_rev": 25532, "act_adr": 49.0, "act_occ": 70.9, "bud_rev": 21955, "bud_adr": null, "bud_occ": null, "ly_rev": 29306, "ly_adr": 49.0, "ly_occ": 83.0}, "Mar": {"act_rev": 40089, "act_adr": 54.0, "act_occ": 91.8, "bud_rev": 44141, "bud_adr": null, "bud_occ": null, "ly_rev": 38368, "ly_adr": 58.0, "ly_occ": 84.0}, "Apr": {"act_rev": 56685, "act_adr": 80.0, "act_occ": 90.0, "bud_rev": 65552, "bud_adr": null, "bud_occ": null, "ly_rev": 58741, "ly_adr": 92.0, "ly_occ": 83.0}}, "Segond Boutique": {"Jan": {"act_rev": 27255, "act_adr": 69.0, "act_occ": 26.2, "bud_rev": 35759, "bud_adr": null, "bud_occ": null, "ly_rev": 0, "ly_adr": 0.0, "ly_occ": 0.0}, "Feb": {"act_rev": 36883, "act_adr": 83.0, "act_occ": 31.9, "bud_rev": 30815, "bud_adr": null, "bud_occ": null, "ly_rev": 12287, "ly_adr": 63.0, "ly_occ": 15.0}, "Mar": {"act_rev": 49917, "act_adr": 65.0, "act_occ": 52.1, "bud_rev": 61955, "bud_adr": null, "bud_occ": null, "ly_rev": 42696, "ly_adr": 57.0, "ly_occ": 53.0}, "Apr": {"act_rev": 83574, "act_adr": 71.0, "act_occ": 78.8, "bud_rev": 92006, "bud_adr": null, "bud_occ": null, "ly_rev": 67652, "ly_adr": 65.0, "ly_occ": 71.0}}, "South 32 Hotel": {"Jan": {"act_rev": 20633, "act_adr": 47.0, "act_occ": 51.5, "bud_rev": 20633, "bud_adr": null, "bud_occ": null, "ly_rev": null, "ly_adr": null, "ly_occ": null}, "Feb": {"act_rev": 26235, "act_adr": 51.0, "act_occ": 58.6, "bud_rev": 26235, "bud_adr": null, "bud_occ": null, "ly_rev": null, "ly_adr": null, "ly_occ": null}, "Mar": {"act_rev": 46849, "act_adr": 56.0, "act_occ": 84.5, "bud_rev": 46480, "bud_adr": null, "bud_occ": null, "ly_rev": null, "ly_adr": null, "ly_occ": null}, "Apr": {"act_rev": 71122, "act_adr": 78.0, "act_occ": 92.9, "bud_rev": 61000, "bud_adr": null, "bud_occ": null, "ly_rev": null, "ly_adr": null, "ly_occ": null}}, "Spinola Stays": {"Jan": {"act_rev": 21790, "act_adr": 56.0, "act_occ": 69.4, "bud_rev": 21071, "bud_adr": null, "bud_occ": null, "ly_rev": 17446, "ly_adr": 42.0, "ly_occ": 73.0}, "Feb": {"act_rev": 23906, "act_adr": 61.0, "act_occ": 78.0, "bud_rev": 18159, "bud_adr": null, "bud_occ": null, "ly_rev": 15637, "ly_adr": 41.0, "ly_occ": 75.0}, "Mar": {"act_rev": 38060, "act_adr": 75.0, "act_occ": 91.3, "bud_rev": 36508, "bud_adr": null, "bud_occ": null, "ly_rev": 29928, "ly_adr": 60.0, "ly_occ": 89.0}, "Apr": {"act_rev": 54106, "act_adr": 115.0, "act_occ": 88.0, "bud_rev": 54216, "bud_adr": null, "bud_occ": null, "ly_rev": 45269, "ly_adr": 91.0, "ly_occ": 92.0}}, "Stuart": {"Jan": {"act_rev": 18577, "act_adr": 48.0, "act_occ": 62.4, "bud_rev": 20930, "bud_adr": null, "bud_occ": null, "ly_rev": 13765, "ly_adr": 47.0, "ly_occ": 47.0}, "Feb": {"act_rev": 19923, "act_adr": 52.0, "act_occ": 67.8, "bud_rev": 18036, "bud_adr": null, "bud_occ": null, "ly_rev": 15394, "ly_adr": 46.0, "ly_occ": 59.0}, "Mar": {"act_rev": 32749, "act_adr": 63.0, "act_occ": 84.0, "bud_rev": 36262, "bud_adr": null, "bud_occ": null, "ly_rev": 28208, "ly_adr": 54.0, "ly_occ": 84.0}, "Apr": {"act_rev": 53196, "act_adr": 96.0, "act_occ": 91.1, "bud_rev": 53851, "bud_adr": null, "bud_occ": null, "ly_rev": 55640, "ly_adr": 95.0, "ly_occ": 97.0}}, "Ta Gianni": {"Jan": {"act_rev": 4001, "act_adr": 39.0, "act_occ": 56.0, "bud_rev": 4281, "bud_adr": null, "bud_occ": null, "ly_rev": 1521, "ly_adr": 44.0, "ly_occ": 19.0}, "Feb": {"act_rev": 4216, "act_adr": 44.0, "act_occ": 56.9, "bud_rev": 3689, "bud_adr": null, "bud_occ": null, "ly_rev": 2575, "ly_adr": 41.0, "ly_occ": 38.0}, "Mar": {"act_rev": 7534, "act_adr": 50.0, "act_occ": 81.6, "bud_rev": 7417, "bud_adr": null, "bud_occ": null, "ly_rev": 6415, "ly_adr": 45.0, "ly_occ": 77.0}, "Apr": {"act_rev": 12309, "act_adr": 76.0, "act_occ": 90.6, "bud_rev": 11014, "bud_adr": null, "bud_occ": null, "ly_rev": 10213, "ly_adr": 64.0, "ly_occ": 88.0}}, "Ta Guzzepi": {"Jan": {"act_rev": 4534, "act_adr": 54.0, "act_occ": 30.4, "bud_rev": 7915, "bud_adr": null, "bud_occ": null, "ly_rev": null, "ly_adr": null, "ly_occ": null}, "Feb": {"act_rev": 3943, "act_adr": 48.0, "act_occ": 32.0, "bud_rev": 6821, "bud_adr": null, "bud_occ": null, "ly_rev": null, "ly_adr": null, "ly_occ": null}, "Mar": {"act_rev": 9095, "act_adr": 58.0, "act_occ": 55.6, "bud_rev": 13714, "bud_adr": null, "bud_occ": null, "ly_rev": null, "ly_adr": null, "ly_occ": null}, "Apr": {"act_rev": 17525, "act_adr": 75.0, "act_occ": 86.2, "bud_rev": 20366, "bud_adr": null, "bud_occ": null, "ly_rev": null, "ly_adr": null, "ly_occ": null}}, "Yolanda Boutique": {"Jan": {"act_rev": 22088, "act_adr": 62.0, "act_occ": 84.1, "bud_rev": 15553, "bud_adr": null, "bud_occ": null, "ly_rev": null, "ly_adr": null, "ly_occ": null}, "Feb": {"act_rev": 19373, "act_adr": 62.0, "act_occ": 80.0, "bud_rev": 13403, "bud_adr": null, "bud_occ": null, "ly_rev": null, "ly_adr": null, "ly_occ": null}, "Mar": {"act_rev": 32871, "act_adr": 77.0, "act_occ": 97.9, "bud_rev": 26947, "bud_adr": null, "bud_occ": null, "ly_rev": null, "ly_adr": null, "ly_occ": null}, "Apr": {"act_rev": 45247, "act_adr": 113.0, "act_occ": 95.2, "bud_rev": 40018, "bud_adr": null, "bud_occ": null, "ly_rev": null, "ly_adr": null, "ly_occ": null}}};
+
+// Determine new units (no LYST across all months)
+function isNewUnit(unit) {
+  const months = DATA[unit];
+  return Object.values(months).every(m => m.ly_rev === null || m.ly_rev === 0);
+}
+
+function hasBudget(unit) {
+  return Object.values(DATA[unit]).some(m => m.bud_rev !== null);
+}
+
+function hasLYST(unit) {
+  return Object.values(DATA[unit]).some(m => m.ly_rev !== null && m.ly_rev > 0);
+}
+
+function fmtRev(v) {
+  if (v === null || v === undefined) return '—';
+  if (v >= 1000) return '€' + (v/1000).toFixed(1) + 'k';
+  return '€' + v;
+}
+
+function fmtPct(v) {
+  if (v === null || v === undefined) return '—';
+  return v.toFixed(1) + '%';
+}
+
+function varArrow(act, comp) {
+  if (comp === null || comp === 0) return '';
+  const pct = ((act - comp) / comp * 100);
+  const cls = pct >= 0 ? 'arrow-up' : 'arrow-dn';
+  const sym = pct >= 0 ? '▲' : '▼';
+  return `<span class="${cls}">${sym}${Math.abs(pct).toFixed(0)}%</span>`;
+}
+
+function varColor(act, comp) {
+  if (!comp || comp === 0) return '';
+  return act >= comp ? 'color:var(--green)' : 'color:var(--red)';
+}
+
+// Compute portfolio totals
+function computeSummary() {
+  let totAct=0, totBud=0, totLY=0;
+  let occActSum=0, occActN=0;
+  let adrActSum=0, adrActN=0;
+  for (const unit of Object.keys(DATA)) {
+    for (const m of MONTHS) {
+      if (!DATA[unit][m]) continue;
+      const d = DATA[unit][m];
+      totAct += d.act_rev || 0;
+      if (d.bud_rev) totBud += d.bud_rev;
+      if (d.ly_rev && d.ly_rev > 0) totLY += d.ly_rev;
+      if (d.act_occ) { occActSum += d.act_occ; occActN++; }
+      if (d.act_adr) { adrActSum += d.act_adr; adrActN++; }
+    }
+  }
+  return { totAct, totBud, totLY,
+    avgOcc: occActN ? occActSum/occActN : 0,
+    avgAdr: adrActN ? adrActSum/adrActN : 0
+  };
+}
+
+function buildSummary() {
+  const s = computeSummary();
+  const budVar = s.totBud ? ((s.totAct-s.totBud)/s.totBud*100) : null;
+  const lyVar  = s.totLY  ? ((s.totAct-s.totLY )/s.totLY *100) : null;
+
+  const cards = [
+    { label:'Total Revenue Jan–Apr', val:'€'+(s.totAct/1000).toFixed(0)+'k',
+      sub: (budVar!==null ? `<span class="${budVar>=0?'pos':'neg'}">${budVar>=0?'▲':'▼'}${Math.abs(budVar).toFixed(1)}% vs Budget</span>` : '') +
+           (lyVar!==null ? ` &nbsp; <span class="${lyVar>=0?'pos':'neg'}">${lyVar>=0?'▲':'▼'}${Math.abs(lyVar).toFixed(1)}% vs 2025</span>` : '') },
+    { label:'Portfolio Avg ADR', val:'€'+s.avgAdr.toFixed(0), sub:'Across all active units' },
+    { label:'Portfolio Avg Occupancy', val:s.avgOcc.toFixed(1)+'%', sub:'Jan–Apr 2026 average' },
+    { label:'Active Units', val:Object.keys(DATA).length, sub:Object.values(DATA).filter((_,i)=>isNewUnit(Object.keys(DATA)[i])).length+' new units (no LYST)' }
+  ];
+
+  const row = document.getElementById('summaryRow');
+  row.innerHTML = cards.map(c=>`
+    <div class="sum-card">
+      <div class="sum-label">${c.label}</div>
+      <div class="sum-val">${c.val}</div>
+      <div class="sum-sub">${c.sub}</div>
+    </div>
+  `).join('');
+}
+
+// Max revenue for bar scaling
+const maxRev = Math.max(...Object.values(DATA).flatMap(u=>
+  MONTHS.filter(m=>u[m]).flatMap(m=>[u[m].act_rev||0, u[m].bud_rev||0, u[m].ly_rev||0])
+));
+
+function buildCard(unit) {
+  const d = DATA[unit];
+  const newU = isNewUnit(unit);
+  const noBud = !hasBudget(unit);
+  const noLY  = !hasLYST(unit) && !newU;
+
+  // Compute totals
+  let totAct=0, totBud=0, totLY=0;
+  MONTHS.forEach(m=>{
+    if(!d[m]) return;
+    totAct += d[m].act_rev||0;
+    totBud += d[m].bud_rev||0;
+    totLY  += (d[m].ly_rev||0);
+  });
+  const budPct = totBud ? ((totAct-totBud)/totBud*100) : null;
+  const lyPct  = totLY  ? ((totAct-totLY )/totLY *100) : null;
+
+  // Badges
+  let badges = '';
+  if (newU)  badges += '<span class="badge badge-new">New Unit</span>';
+  if (noBud) badges += '<span class="badge badge-no-bud">No Budget</span>';
+  if (noLY && !newU) badges += '<span class="badge badge-no-ly">No LYST</span>';
+
+  // Revenue bars (total)
+  function barRow(tag, val, cls) {
+    if (!val) return '';
+    const w = Math.max(2, (val/maxRev*100));
+    return `<div class="bar-row">
+      <span class="bar-tag">${tag}</span>
+      <div class="bar-track"><div class="bar-fill ${cls}" data-width="${w}%" style="width:0%"></div></div>
+      <span class="bar-val">${fmtRev(val)}</span>
+    </div>`;
+  }
+
+  const revBars = `
+    <div class="bar-group">
+      ${barRow('ACT', totAct, 'bar-act')}
+      ${totBud ? barRow('BUD', totBud, 'bar-bud') : ''}
+      ${totLY  ? barRow('LY',  totLY,  'bar-ly')  : ''}
+    </div>
+    <div style="display:flex;gap:1rem;font-size:0.72rem;font-weight:300;flex-wrap:wrap;margin-top:0.2rem">
+      ${budPct!==null ? `<span style="${varColor(totAct,totBud)}">BUD: ${budPct>=0?'▲':'▼'}${Math.abs(budPct).toFixed(1)}%</span>` : '<span style="color:var(--muted)">No budget</span>'}
+      ${lyPct!==null  ? `<span style="${varColor(totAct,totLY)}">LYST: ${lyPct>=0?'▲':'▼'}${Math.abs(lyPct).toFixed(1)}%</span>` : '<span style="color:var(--muted)">No LYST</span>'}
+    </div>`;
+
+  // Month-by-month grid
+  const monthCols = MONTHS.map(m => {
+    if (!d[m]) return `<div class="month-col"><div class="month-name">${m}</div><div class="no-data">No data</div></div>`;
+    const md = d[m];
+
+    function metricBlock(lbl, act, bud, ly, fmt) {
+      const budComp = bud !== null ? `<div class="m-comp"><div class="ci ci-bud"></div>${fmt(bud)} ${varArrow(act,bud)}</div>` : '';
+      const lyComp  = (ly !== null && ly > 0) ? `<div class="m-comp"><div class="ci ci-ly"></div>${fmt(ly)} ${varArrow(act,ly)}</div>` : '';
+      return `<div class="metric-block">
+        <div class="m-label">${lbl}</div>
+        <div class="m-val" style="${varColor(act, bud||ly)}">${fmt(act)}</div>
+        <div class="m-comps">${budComp}${lyComp}</div>
+      </div>`;
+    }
+
+    return `<div class="month-col">
+      <div class="month-name">${m}</div>
+      ${metricBlock('REV', md.act_rev, md.bud_rev, md.ly_rev, fmtRev)}
+      ${metricBlock('OCC', md.act_occ, md.bud_occ, md.ly_occ, fmtPct)}
+      ${metricBlock('ADR', md.act_adr, md.bud_adr, md.ly_adr, v=>'€'+v)}
+    </div>`;
+  }).join('');
+
+  return `
+    <div class="unit-card${newU?' new-unit':''}" 
+         data-unit="${unit}"
+         data-above-budget="${budPct!==null && budPct>=0}"
+         data-below-budget="${budPct!==null && budPct<0}"
+         data-above-lyst="${lyPct!==null && lyPct>=0}"
+         data-below-lyst="${lyPct!==null && lyPct<0}"
+         data-new="${newU}">
+      <div class="card-head">
+        <div>
+          <div class="unit-name">${unit}</div>
+          <div class="unit-badges">${badges}</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-family:'DM Mono',monospace;font-size:0.6rem;color:var(--muted);letter-spacing:0.08em;text-transform:uppercase">Jan–Apr Total</div>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:1.6rem;line-height:1;letter-spacing:0.02em">${fmtRev(totAct)}</div>
+        </div>
+      </div>
+      <div class="rev-section">
+        <div class="metric-label">Revenue comparison</div>
+        ${revBars}
+      </div>
+      <div class="metric-label" style="margin-bottom:0.5rem">Monthly detail · Revenue / Occupancy / ADR</div>
+      <div class="months-grid">${monthCols}</div>
+    </div>`;
+}
+
+function buildGrid() {
+  const grid = document.getElementById('mainGrid');
+  grid.innerHTML = Object.keys(DATA).map(buildCard).join('');
+  // Animate bars
+  setTimeout(()=>{
+    document.querySelectorAll('.bar-fill[data-width]').forEach(el=>{
+      el.style.width = el.getAttribute('data-width');
+    });
+  }, 100);
+}
+
+function filterUnits(mode, btn) {
+  document.querySelectorAll('.ftab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.unit-card').forEach(card=>{
+    let show = true;
+    if (mode === 'above-budget') show = card.dataset.aboveBudget === 'true';
+    else if (mode === 'below-budget') show = card.dataset.belowBudget === 'true';
+    else if (mode === 'above-lyst')   show = card.dataset.aboveLyst   === 'true';
+    else if (mode === 'below-lyst')   show = card.dataset.belowLyst   === 'true';
+    else if (mode === 'new')          show = card.dataset.new         === 'true';
+    card.classList.toggle('hidden', !show);
+  });
+}
+
+buildSummary();
+buildGrid();
+</script>
+</body>
+</html>

@@ -3,637 +3,928 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>zZZing · 2026 Performance Dashboard</title>
-<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Barlow:wght@300;400;600;700;900&family=Bebas+Neue&display=swap" rel="stylesheet">
+<title>Property Performance Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <style>
-
-*{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --bg:#0b0b0b;
-  --surface:#111;
-  --surface2:#181818;
-  --border:rgba(255,255,255,0.07);
-  --white:#f2ede4;
-  --muted:#5a5a5a;
-  --gold:#e8a820;
-  --green:#2ecc71;
-  --red:#e74c3c;
-  --blue:#5b9bd5;
-  --amber:#f39c12;
-  --new:#7b68ee;
-  --orange:#e67e22;
-  --teal:#1abc9c;
+  --gold:#F5C842;--gold-light:#FDE98A;--gold-dim:rgba(245,200,66,0.12);--gold-border:rgba(245,200,66,0.32);
+  --bg:#0A0A0A;--bg2:#111111;--bg3:#1A1A1A;--bg4:#242424;
+  --glass:rgba(255,255,255,0.04);--glass-b:rgba(255,255,255,0.08);
+  --text:#F0F0F0;--text2:#A0A0A0;--text3:#505050;
+  --green:#22C55E;--gdim:rgba(34,197,94,0.12);--gbrd:rgba(34,197,94,0.25);
+  --red:#EF4444;--rdim:rgba(239,68,68,0.12);--rbrd:rgba(239,68,68,0.25);
+  --blue:#3B82F6;--neutral:#6B7280;
+  --r:12px;--rs:8px;
 }
-body{background:var(--bg);color:var(--white);font-family:'Barlow',sans-serif;font-weight:300;min-height:100vh}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;line-height:1.5;}
 
-/* ── TAB NAV ── */
-.tab-nav{
-  display:flex;gap:0;background:var(--surface);
-  border-bottom:2px solid var(--border);
-  position:sticky;top:0;z-index:60;
-}
-.tab-btn{
-  font-family:'DM Mono',monospace;font-size:0.65rem;letter-spacing:0.16em;text-transform:uppercase;
-  padding:1rem 2rem;border:none;background:transparent;color:var(--muted);
-  cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;
-  transition:all 0.15s;white-space:nowrap;
-}
-.tab-btn:hover{color:var(--white)}
-.tab-btn.active{color:var(--gold);border-bottom-color:var(--gold)}
-.tab-panel{display:none}
-.tab-panel.active{display:block}
+/* ── UPLOAD ── */
+#upload-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;
+  background:radial-gradient(ellipse at 50% 38%,rgba(245,200,66,0.07) 0%,transparent 65%),var(--bg);padding:2rem;}
+.up-card{background:var(--bg2);border:1px solid var(--gold-border);border-radius:20px;
+  padding:3rem 2.5rem;max-width:500px;width:100%;text-align:center;position:relative;overflow:hidden;}
+.up-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,transparent,var(--gold),transparent);}
+.up-icon{width:68px;height:68px;background:var(--gold-dim);border:1px solid var(--gold-border);
+  border-radius:16px;margin:0 auto 1.5rem;display:flex;align-items:center;justify-content:center;font-size:30px;}
+.up-card h1{font-size:24px;font-weight:700;margin-bottom:.4rem;letter-spacing:-.5px;}
+.up-card h1 em{font-style:normal;color:var(--gold);}
+.up-card p{color:var(--text2);font-size:13px;margin-bottom:1.75rem;line-height:1.6;}
+.drop-zone{border:2px dashed var(--gold-border);border-radius:var(--r);padding:2rem 1.5rem;
+  cursor:pointer;transition:all .2s;background:var(--gold-dim);margin-bottom:1.25rem;}
+.drop-zone:hover,.drop-zone.drag-over{border-color:var(--gold);background:rgba(245,200,66,0.18);}
+.drop-icon{font-size:34px;margin-bottom:.6rem;}
+.drop-text{font-size:14px;color:var(--text2);}
+.drop-text strong{color:var(--gold);}
+.up-btn{display:block;background:var(--gold);color:#000;font-weight:700;font-size:15px;
+  padding:.7rem 2rem;border-radius:var(--rs);cursor:pointer;border:none;width:100%;transition:all .2s;}
+.up-btn:hover{background:var(--gold-light);transform:translateY(-1px);}
+.up-note{margin-top:.9rem;font-size:11px;color:var(--text3);}
+.up-note em{color:var(--gold);font-style:normal;}
+#file-input{display:none;}
+#up-status{margin-top:.7rem;font-size:13px;color:var(--text2);min-height:18px;}
+#up-status.err{color:var(--red);}
 
-/* ── HEADER ── */
-header{
-  background:var(--surface);
-  border-bottom:1px solid var(--border);
-  padding:1.8rem 2.5vw 1.4rem;
-  display:flex;align-items:flex-end;justify-content:space-between;gap:1rem;
-  position:sticky;top:0;z-index:50;
-}
-.brand-line{display:flex;flex-direction:column;gap:0.15rem}
-.brand-top{font-family:'DM Mono',monospace;font-size:0.6rem;letter-spacing:0.2em;text-transform:uppercase;color:var(--gold)}
-.brand-title{font-family:'Bebas Neue',sans-serif;font-size:2.2rem;line-height:1;letter-spacing:0.02em}
-.brand-title span{color:var(--gold)}
-.header-right{text-align:right}
-.header-period{font-family:'DM Mono',monospace;font-size:0.62rem;letter-spacing:0.12em;color:var(--muted);text-transform:uppercase;line-height:1.7}
+/* ── TOP BAR ── */
+#dashboard{display:none;}
+.top-bar{background:var(--bg2);border-bottom:1px solid var(--glass-b);padding:0 1.5rem;
+  height:56px;display:flex;align-items:center;gap:1rem;position:sticky;top:0;z-index:100;}
+.top-logo{font-size:14px;font-weight:700;color:var(--gold);display:flex;align-items:center;gap:6px;flex-shrink:0;}
+.top-logo span{color:var(--text3);font-weight:400;font-size:11px;}
+.tab-nav{display:flex;gap:4px;flex:1;justify-content:center;}
+.tab-btn{padding:5px 16px;border-radius:20px;border:1px solid transparent;background:none;
+  color:var(--text2);font-size:13px;font-weight:500;cursor:pointer;transition:all .15s;white-space:nowrap;}
+.tab-btn.active{background:var(--gold);color:#000;font-weight:700;}
+.tab-btn:not(.active):hover{color:var(--text);border-color:var(--glass-b);}
+.reset-btn{font-size:11px;color:var(--text3);background:none;border:1px solid var(--text3);
+  border-radius:6px;padding:4px 9px;cursor:pointer;flex-shrink:0;}
+.reset-btn:hover{color:var(--text2);}
+.date-pill{font-size:10px;color:var(--text3);background:var(--bg3);border:1px solid var(--glass-b);
+  border-radius:20px;padding:3px 10px;flex-shrink:0;white-space:nowrap;}
 
-/* ── LEGEND BAR ── */
-.legend-bar{
-  background:var(--surface2);
-  border-bottom:1px solid var(--border);
-  padding:0.7rem 2.5vw;
-  display:flex;flex-wrap:wrap;gap:0.5rem 2rem;align-items:center;
-}
-.leg{display:flex;align-items:center;gap:0.4rem;font-family:'DM Mono',monospace;font-size:0.6rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted)}
-.leg-dot{width:8px;height:8px;border-radius:2px;flex-shrink:0}
-.ld-act{background:var(--white)}
-.ld-bud{background:var(--gold);opacity:0.7}
-.ld-ly{background:var(--blue);opacity:0.7}
+.tab-content{padding:1.25rem 1.5rem;max-width:1720px;margin:0 auto;}
+.tab-pane{display:none;}
+.tab-pane.active{display:block;}
 
-/* ── FILTER TABS ── */
-.filter-row{
-  padding:1.2rem 2.5vw 0;
-  display:flex;gap:0.5rem;flex-wrap:wrap;align-items:center;
-}
-.filter-label{font-family:'DM Mono',monospace;font-size:0.58rem;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted);margin-right:0.3rem}
-.ftab{
-  font-family:'DM Mono',monospace;font-size:0.6rem;letter-spacing:0.1em;text-transform:uppercase;
-  padding:4px 12px;border-radius:2px;border:1px solid var(--border);
-  background:transparent;color:var(--muted);cursor:pointer;transition:all 0.15s;
-}
-.ftab.active,.ftab:hover{background:var(--gold);color:var(--bg);border-color:var(--gold)}
-.ftab.new-tag{border-color:var(--new);color:var(--new)}
-.ftab.new-tag.active{background:var(--new);color:white}
+/* ── SECTION HEADER ── */
+.sec-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:.75rem;}
+.sec-title{font-size:17px;font-weight:700;display:flex;align-items:center;gap:8px;}
+.badge{font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px;
+  background:var(--gold-dim);color:var(--gold);border:1px solid var(--gold-border);letter-spacing:.5px;}
 
-/* ── SUMMARY STATS ── */
-.summary-row{
-  display:grid;grid-template-columns:repeat(4,1fr);gap:1px;
-  background:var(--border);margin:1.2rem 2.5vw 0;
-  border:1px solid var(--border);
-}
-.sum-card{background:var(--surface2);padding:1.2rem 1.5rem}
-.sum-label{font-family:'DM Mono',monospace;font-size:0.56rem;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted);margin-bottom:0.4rem}
-.sum-val{font-family:'Bebas Neue',sans-serif;font-size:2rem;line-height:1;letter-spacing:0.02em}
-.sum-sub{font-size:0.7rem;font-weight:300;color:var(--muted);margin-top:0.2rem}
-.sum-sub .pos{color:var(--green)}
-.sum-sub .neg{color:var(--red)}
+/* ── SUMMARY CARDS ── */
+.sum-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:9px;margin-bottom:1.25rem;}
+.mc{background:var(--bg2);border:1px solid var(--glass-b);border-radius:var(--r);padding:.9rem 1rem;position:relative;overflow:hidden;}
+.mc::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--gold-border),transparent);}
+.mc-lbl{font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:.8px;margin-bottom:5px;font-weight:500;}
+.mc-val{font-size:21px;font-weight:700;letter-spacing:-.5px;}
+.mc-delta{font-size:11px;margin-top:3px;font-weight:600;}
+.up{color:var(--green);}
+.dn{color:var(--red);}
+.nt{color:var(--neutral);}
 
-/* ── MAIN GRID ── */
-.main-grid{
-  padding:1.2rem 2.5vw 3rem;
-  display:grid;
-  grid-template-columns:repeat(auto-fill,minmax(420px,1fr));
-  gap:1px;
-  background:var(--border);
-  border:1px solid var(--border);
-  margin:0.8rem 2.5vw 0;
-}
-.unit-card{
-  background:var(--surface);
-  padding:1.4rem 1.5rem;
-  position:relative;
-  transition:background 0.15s;
-}
-.unit-card:hover{background:var(--surface2)}
-.unit-card.new-unit{border-left:3px solid var(--new)}
-.unit-card.hidden{display:none}
+/* ── FILTERS ── */
+.filter-bar{display:flex;gap:7px;margin-bottom:1rem;flex-wrap:wrap;align-items:center;}
+.f-lbl{font-size:11px;color:var(--text3);margin-right:2px;}
+.fb{padding:4px 12px;border-radius:20px;border:1px solid var(--glass-b);background:var(--glass);
+  color:var(--text2);font-size:11px;font-weight:500;cursor:pointer;transition:all .15s;}
+.fb:hover{border-color:var(--gold-border);color:var(--text);}
+.fb.active{background:var(--gold-dim);border-color:var(--gold-border);color:var(--gold);font-weight:700;}
 
-/* card header */
-.card-head{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:1rem}
-.unit-name{font-family:'Barlow',sans-serif;font-weight:700;font-size:0.95rem;text-transform:uppercase;letter-spacing:0.04em;line-height:1.2}
-.unit-badges{display:flex;gap:0.35rem;flex-wrap:wrap;margin-top:0.3rem}
-.badge{font-family:'DM Mono',monospace;font-size:0.5rem;letter-spacing:0.1em;text-transform:uppercase;padding:2px 6px;border-radius:2px}
-.badge-new{background:rgba(123,104,238,0.15);color:var(--new);border:1px solid rgba(123,104,238,0.3)}
-.badge-no-ly{background:rgba(91,155,213,0.1);color:var(--blue);border:1px solid rgba(91,155,213,0.25)}
-.badge-no-bud{background:rgba(232,168,32,0.1);color:var(--gold);border:1px solid rgba(232,168,32,0.25)}
+/* ── LEGEND ── */
+.legend{display:flex;gap:14px;margin-bottom:.9rem;flex-wrap:wrap;}
+.li{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text2);}
+.ld{width:9px;height:9px;border-radius:2px;flex-shrink:0;}
 
-/* revenue bar section */
-.rev-section{margin-bottom:1rem}
-.metric-label{font-family:'DM Mono',monospace;font-size:0.54rem;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted);margin-bottom:0.5rem}
+/* ── PROPERTY CARDS ── */
+.prop-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(500px,1fr));gap:14px;}
+.pc{background:var(--bg2);border:1px solid var(--glass-b);border-radius:var(--r);overflow:hidden;transition:border-color .15s;}
+.pc:hover{border-color:var(--gold-border);}
+.pc.hidden{display:none;}
 
-.bar-group{display:flex;flex-direction:column;gap:3px;margin-bottom:0.7rem}
-.bar-row{display:flex;align-items:center;gap:0.6rem}
-.bar-tag{font-family:'DM Mono',monospace;font-size:0.5rem;letter-spacing:0.08em;text-transform:uppercase;width:28px;flex-shrink:0;color:var(--muted)}
-.bar-track{flex:1;height:8px;background:rgba(255,255,255,0.04);border-radius:1px;overflow:visible;position:relative}
-.bar-fill{height:100%;border-radius:1px;transition:width 0.8s cubic-bezier(0.16,1,0.3,1)}
-.bar-act{background:var(--white);opacity:0.9}
-.bar-bud{background:var(--gold);opacity:0.55}
-.bar-ly{background:var(--blue);opacity:0.55}
-.bar-val{font-family:'DM Mono',monospace;font-size:0.58rem;letter-spacing:0.04em;width:70px;text-align:right;flex-shrink:0}
+/* Card header row: name left, YTD total right */
+.pc-hdr{padding:14px 16px 10px;display:flex;align-items:flex-start;justify-content:space-between;}
+.pc-name{font-size:15px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:var(--text);}
+.pc-ytd-block{text-align:right;}
+.pc-ytd-label{font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;font-weight:600;margin-bottom:2px;}
+.pc-ytd-val{font-size:22px;font-weight:800;letter-spacing:-.5px;color:var(--text);}
 
-/* month columns */
-.months-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--border);border:1px solid var(--border);border-radius:2px;overflow:hidden}
-.month-col{background:var(--surface2);padding:0.65rem 0.6rem}
-.month-name{font-family:'DM Mono',monospace;font-size:0.55rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);margin-bottom:0.5rem;text-align:center}
-.metric-block{margin-bottom:0.5rem}
-.metric-block:last-child{margin-bottom:0}
-.m-label{font-family:'DM Mono',monospace;font-size:0.46rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:1px}
-.m-val{font-size:0.85rem;font-weight:700;line-height:1.2}
-.m-comps{display:flex;flex-direction:column;gap:1px;margin-top:1px}
-.m-comp{font-family:'DM Mono',monospace;font-size:0.48rem;letter-spacing:0.04em;display:flex;align-items:center;gap:3px}
-.m-comp .ci{width:5px;height:5px;border-radius:1px;flex-shrink:0}
-.ci-bud{background:var(--gold)}
-.ci-ly{background:var(--blue)}
-.arrow-up{color:var(--green)}
-.arrow-dn{color:var(--red)}
-.arrow-eq{color:var(--muted)}
+/* Revenue comparison bars */
+.pc-rev-section{padding:0 16px 10px;}
+.pc-rev-label{font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;font-weight:600;margin-bottom:8px;}
+.rev-bar-row{display:flex;align-items:center;gap:8px;margin-bottom:5px;}
+.rev-bar-tag{font-size:9px;color:var(--text3);width:24px;flex-shrink:0;font-weight:600;}
+.rev-bar-track{flex:1;height:8px;background:var(--bg4);border-radius:4px;overflow:hidden;}
+.rev-bar-fill{height:100%;border-radius:4px;}
+.fill-act{background:var(--text);}
+.fill-bud{background:var(--gold);}
+.fill-ly{background:#3B82F6;}
+.rev-bar-val{font-size:10px;font-weight:700;width:52px;text-align:right;flex-shrink:0;color:var(--text2);}
 
-/* no-data placeholder */
-.no-data{font-family:'DM Mono',monospace;font-size:0.55rem;letter-spacing:0.08em;color:var(--muted);padding:0.3rem 0;font-style:italic}
+/* Budget/LYST delta pills */
+.pc-deltas{display:flex;gap:16px;padding:0 16px 12px;}
+.delta-item{font-size:12px;font-weight:700;}
+.delta-item .d-label{color:var(--text3);font-weight:600;margin-right:4px;}
 
-/* footer */
-footer{
-  padding:1.4rem 2.5vw;border-top:1px solid var(--border);
-  display:flex;justify-content:space-between;align-items:center;
-  font-family:'DM Mono',monospace;font-size:0.58rem;letter-spacing:0.1em;color:var(--muted);text-transform:uppercase;
-}
+/* Divider */
+.pc-divider{height:1px;background:var(--glass-b);margin:0 16px 12px;}
+.pc-detail-label{font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;font-weight:600;padding:0 16px 8px;}
 
-/* ── OTB PANEL ── */
-.otb-summary-row{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--border);border:1px solid var(--border);margin:1.2rem 2.5vw 0}
-.otb-alert-bar{margin:0.8rem 2.5vw 0;padding:0.9rem 1.4rem;background:#1a0e00;border:1px solid rgba(230,126,34,0.3);display:flex;align-items:center;gap:0.8rem;flex-wrap:wrap}
-.alert-title{font-family:'DM Mono',monospace;font-size:0.6rem;letter-spacing:0.14em;text-transform:uppercase;color:var(--orange);flex-shrink:0}
-.alert-chips{display:flex;flex-wrap:wrap;gap:0.4rem}
-.alert-chip{font-family:'DM Mono',monospace;font-size:0.56rem;letter-spacing:0.08em;padding:3px 8px;border-radius:2px;background:rgba(230,126,34,0.12);color:var(--orange);border:1px solid rgba(230,126,34,0.25)}
-.alert-chip.danger{background:rgba(231,76,60,0.12);color:var(--red);border-color:rgba(231,76,60,0.3)}
+/* Monthly columns grid */
+.mo-grid{display:grid;padding:0 16px 16px;gap:1px;background:var(--glass-b);}
+.mo-grid-inner{display:grid;gap:1px;}
+.mo-col-headers{display:grid;gap:1px;background:var(--glass-b);}
+.mo-col-head{background:var(--bg3);font-size:9px;font-weight:700;color:var(--text3);
+  text-transform:uppercase;letter-spacing:.8px;padding:6px 0;text-align:center;}
 
-.otb-grid{padding:1rem 2.5vw 3rem;display:flex;flex-direction:column;gap:1px;background:var(--border);border:1px solid var(--border);margin:0.8rem 2.5vw 0}
-.otb-unit-row{background:var(--surface);padding:1.2rem 1.5rem;display:grid;grid-template-columns:200px 1fr;gap:1.5rem;align-items:center;transition:background 0.15s}
-.otb-unit-row:hover{background:var(--surface2)}
-.otb-unit-name{font-weight:700;font-size:0.9rem;text-transform:uppercase;letter-spacing:0.04em;line-height:1.3}
-.otb-unit-total{font-family:'DM Mono',monospace;font-size:0.58rem;letter-spacing:0.08em;color:var(--muted);margin-top:0.2rem}
+/* Each month column */
+.mo-cols{display:flex;gap:1px;background:var(--glass-b);}
+.mo-col{flex:1;background:var(--bg2);padding:10px 8px;}
+.mo-col-month{font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;
+  letter-spacing:.6px;text-align:center;margin-bottom:8px;}
 
-.month-track-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:4px}
-.month-track{background:var(--surface2);border-radius:3px;padding:0.7rem 0.8rem;position:relative;border-top:2px solid transparent;transition:border-color 0.15s}
-.mt-ahead-bud{border-top-color:var(--green)}
-.mt-behind-bud{border-top-color:var(--red)}
-.mt-no-bud{border-top-color:var(--muted);opacity:0.7}
-.mt-empty{border-top-color:var(--border);opacity:0.4}
+/* Per-metric in a month column */
+.mm-block{margin-bottom:9px;}
+.mm-block:last-child{margin-bottom:0;}
+.mm-label{font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;font-weight:600;margin-bottom:2px;}
+.mm-val{font-size:14px;font-weight:800;letter-spacing:-.3px;color:var(--text);margin-bottom:3px;}
+.mm-refs{display:flex;flex-direction:column;gap:2px;}
+.mm-ref{display:flex;align-items:center;gap:3px;font-size:9px;line-height:1.2;}
+.mm-ref-icon{width:6px;height:6px;border-radius:1px;flex-shrink:0;}
+.mm-ref-val{font-weight:700;}
+.mm-ref-delta{font-size:8px;font-weight:700;}
 
-.mt-month{font-family:'DM Mono',monospace;font-size:0.52rem;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted);margin-bottom:0.4rem}
-.mt-occ-bar-wrap{height:4px;background:rgba(255,255,255,0.06);border-radius:2px;margin-bottom:0.5rem;overflow:hidden;position:relative}
-.mt-occ-bar{height:100%;border-radius:2px;transition:width 0.9s cubic-bezier(0.16,1,0.3,1)}
-.mt-occ-bar.pace-ahead{background:var(--green)}
-.mt-occ-bar.pace-behind{background:var(--red)}
-.mt-occ-bar.pace-neutral{background:var(--blue)}
-.mt-ly-tick{position:absolute;top:0;bottom:0;width:2px;background:rgba(91,155,213,0.7)}
+.s-abv{color:var(--green);}
+.s-blw{color:var(--red);}
+.s-new{color:var(--gold);}
 
-.mt-rev{font-family:'DM Mono',monospace;font-size:0.7rem;font-weight:500;letter-spacing:0.04em;line-height:1}
-.mt-occ{font-size:0.72rem;font-weight:600;line-height:1;margin-top:0.2rem}
-.mt-adr{font-family:'DM Mono',monospace;font-size:0.56rem;color:var(--muted);margin-top:0.15rem}
-.mt-comps{margin-top:0.4rem;display:flex;flex-direction:column;gap:2px}
-.mt-comp-row{display:flex;align-items:center;gap:4px;font-family:'DM Mono',monospace;font-size:0.5rem;letter-spacing:0.04em}
-.comp-dot{width:5px;height:5px;border-radius:1px;flex-shrink:0}
-.cd-bud{background:var(--gold)}
-.cd-ly{background:var(--blue)}
-.gap-label{font-family:'DM Mono',monospace;font-size:0.48rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-top:0.3rem}
-.gap-val{font-family:'DM Mono',monospace;font-size:0.6rem}
-.gap-red{color:var(--red)}
-.gap-grn{color:var(--green)}
+/* ── OTB ── */
 
-.pace-legend{display:flex;gap:1.5rem;align-items:center;padding:0.6rem 2.5vw;background:var(--surface2);border-bottom:1px solid var(--border);flex-wrap:wrap}
-.pl-item{display:flex;align-items:center;gap:0.35rem;font-family:'DM Mono',monospace;font-size:0.56rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted)}
-.pl-bar{width:16px;height:4px;border-radius:2px}
+/* Top KPI banner */
+.otb-kpi-bar{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1px;
+  background:var(--glass-b);border:1px solid var(--glass-b);border-radius:var(--r);margin-bottom:1.25rem;overflow:hidden;}
+.otb-kpi{background:var(--bg2);padding:1.1rem 1.25rem;}
+.otb-kpi-lbl{font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.9px;font-weight:700;margin-bottom:6px;}
+.otb-kpi-val{font-size:28px;font-weight:800;letter-spacing:-.8px;line-height:1;}
+.otb-kpi-sub{font-size:11px;margin-top:5px;font-weight:600;}
+
+/* Action required — inline tag strip */
+.otb-action-box{background:rgba(180,40,40,0.13);border:1px solid rgba(239,68,68,0.3);
+  border-radius:var(--r);padding:.75rem 1rem;margin-bottom:1.25rem;}
+.otb-action-hdr{font-size:10px;font-weight:700;color:var(--red);text-transform:uppercase;
+  letter-spacing:.8px;margin-bottom:.65rem;display:flex;align-items:center;gap:6px;}
+.otb-action-tags{display:flex;flex-wrap:wrap;gap:6px;}
+.otb-tag{font-size:10px;font-weight:600;padding:3px 10px;border-radius:4px;
+  background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.25);color:var(--text2);
+  white-space:nowrap;cursor:default;transition:background .15s;}
+.otb-tag:hover{background:rgba(239,68,68,0.2);}
+
+/* Per-property OTB rows */
+.otb-rows{display:flex;flex-direction:column;gap:2px;}
+.otb-prop-row{display:grid;grid-template-columns:180px 1fr;background:var(--bg2);
+  border:1px solid var(--glass-b);border-radius:var(--r);overflow:hidden;transition:border-color .15s;}
+.otb-prop-row:hover{border-color:var(--gold-border);}
+
+/* Left sidebar of each property row */
+.otb-prop-info{padding:16px 14px;border-right:1px solid var(--glass-b);display:flex;
+  flex-direction:column;justify-content:center;background:var(--bg3);}
+.otb-prop-name{font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:var(--text);margin-bottom:6px;}
+.otb-prop-total-lbl{font-size:9px;color:var(--text3);font-weight:500;margin-bottom:2px;}
+.otb-prop-total{font-size:13px;font-weight:700;color:var(--text2);}
+.otb-prop-gap{font-size:11px;font-weight:700;margin-top:4px;}
+
+/* Month cells inside each property row */
+.otb-mo-cells{display:flex;overflow-x:auto;}
+.otb-mo-cell{flex:1;min-width:140px;padding:10px 12px;border-right:1px solid var(--glass-b);
+  position:relative;}
+.otb-mo-cell:last-child{border-right:none;}
+.otb-mo-name{font-size:8px;font-weight:700;color:var(--text3);text-transform:uppercase;
+  letter-spacing:.8px;margin-bottom:6px;}
+
+/* Occupancy pace bar (the coloured top line) */
+.otb-occ-bar{height:3px;border-radius:2px;margin-bottom:8px;width:100%;}
+
+/* Revenue + metrics */
+.otb-mo-rev{font-size:16px;font-weight:800;letter-spacing:-.3px;color:var(--text);margin-bottom:2px;}
+.otb-mo-occ{font-size:12px;font-weight:700;margin-bottom:2px;}
+.otb-mo-adr{font-size:10px;color:var(--text3);margin-bottom:8px;}
+
+/* Reference rows (Budget / LY) */
+.otb-mo-refs{display:flex;flex-direction:column;gap:3px;}
+.otb-mo-ref-row{display:flex;align-items:center;gap:4px;font-size:9px;}
+.otb-mo-ref-dot{width:7px;height:7px;border-radius:1px;flex-shrink:0;}
+.otb-mo-ref-val{color:var(--text2);font-weight:600;}
+.otb-mo-ref-delta{font-weight:700;font-size:8px;}
+
+/* Gap to budget line */
+.otb-mo-gap-lbl{font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;
+  margin-top:6px;margin-bottom:1px;font-weight:600;}
+.otb-mo-gap-val{font-size:11px;font-weight:800;}
+
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-track{background:var(--bg2);}
+::-webkit-scrollbar-thumb{background:var(--bg4);border-radius:3px;}
 
 @media(max-width:700px){
-  .otb-unit-row{grid-template-columns:1fr}
-  .month-track-grid{grid-template-columns:repeat(3,1fr)}
-  .otb-summary-row{grid-template-columns:1fr 1fr}
+  .prop-grid{grid-template-columns:1fr;}
+  .otb-charts{grid-template-columns:1fr;}
+  .tab-btn{padding:4px 8px;font-size:11px;}
 }
-
 </style>
 </head>
 <body>
 
-<header>
-  <div class="brand-line">
-    <span class="brand-top">zZZing Holiday Homes · Revenue Intelligence</span>
-    <span class="brand-title">2026 <span>Performance</span> Dashboard</span>
-  </div>
-  <div class="header-right">
-    <div class="header-period">Jan–Apr Actuals + May–Sep OTB<br>vs Budget · vs 2025 (LYST)<br>Report date: 20 Apr 2026</div>
-  </div>
-</header>
-
-<div class="tab-nav">
-  <button class="tab-btn active" onclick="switchTab('actuals',this)">📊 Jan–Apr Actuals</button>
-  <button class="tab-btn" onclick="switchTab('otb',this)">📅 Forward OTB · May–Sep</button>
-</div>
-
-<!-- TAB 1: ACTUALS -->
-<div class="tab-panel active" id="tab-actuals">
-<div class="legend-bar">
-  <div class="leg"><div class="leg-dot ld-act"></div>2026 Actual</div>
-  <div class="leg"><div class="leg-dot ld-bud"></div>Budget 2026</div>
-  <div class="leg"><div class="leg-dot ld-ly"></div>2025 (LYST)</div>
-  <div style="margin-left:1rem;display:flex;gap:0.5rem;align-items:center">
-    <span class="leg" style="color:var(--green)">▲ Above</span>
-    <span class="leg" style="color:var(--red)">▼ Below</span>
-    <span style="width:1px;height:12px;background:var(--border);display:inline-block;margin:0 0.5rem"></span>
-    <span class="badge badge-new" style="font-size:0.5rem">NEW UNIT</span>
-    <span class="badge badge-no-ly" style="font-size:0.5rem">NO LYST</span>
-    <span class="badge badge-no-bud" style="font-size:0.5rem">NO BUDGET</span>
+<!-- UPLOAD -->
+<div id="upload-screen">
+  <div class="up-card">
+    <div class="up-icon">🏨</div>
+    <h1>Property <em>Performance</em></h1>
+    <p>Upload your Excel file with <strong>Actuals</strong> and <strong>Budget</strong> sheets.<br>
+    YTD and OTB ranges are calculated automatically from <strong>today's date</strong>.</p>
+    <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
+      <div class="drop-icon">📊</div>
+      <p class="drop-text"><strong>Click to browse</strong> or drag &amp; drop</p>
+      <p class="drop-text" style="margin-top:5px;font-size:11px;">.xlsx files only · Actuals + Budget sheets required</p>
+    </div>
+    <input type="file" id="file-input" accept=".xlsx,.xls">
+    <button class="up-btn" onclick="document.getElementById('file-input').click()">Select Excel File</button>
+    <div class="up-note">Required sheets: <em>Actuals</em> · <em>Budget</em></div>
+    <div id="up-status"></div>
   </div>
 </div>
 
-<div class="filter-row">
-  <span class="filter-label">Filter:</span>
-  <button class="ftab active" onclick="filterUnits('all',this)">All Units</button>
-  <button class="ftab" onclick="filterUnits('above-budget',this)">▲ Above Budget</button>
-  <button class="ftab" onclick="filterUnits('below-budget',this)">▼ Below Budget</button>
-  <button class="ftab" onclick="filterUnits('above-lyst',this)">▲ Above LYST</button>
-  <button class="ftab" onclick="filterUnits('below-lyst',this)">▼ Below LYST</button>
-  <button class="ftab new-tag" onclick="filterUnits('new',this)">New Units</button>
-</div>
+<!-- DASHBOARD -->
+<div id="dashboard">
+  <div class="top-bar">
+    <div class="top-logo">🏨 PerfTrack <span id="top-file"></span></div>
+    <div class="tab-nav">
+      <button class="tab-btn active" onclick="switchTab('ytd')" id="tab-btn-ytd">YTD Actuals</button>
+      <button class="tab-btn" onclick="switchTab('otb')" id="tab-btn-otb">Forward OTB</button>
+    </div>
+    <div class="date-pill" id="date-pill"></div>
+    <button class="reset-btn" onclick="resetDashboard()">↩ New File</button>
+  </div>
 
-<div class="summary-row" id="summaryRow"></div>
-<div class="main-grid" id="mainGrid"></div>
+  <div class="tab-content">
 
-<footer>
-  <span>zZZing Holiday Homes · Multi-Unit Pickup Report</span>
-  <span>20 April 2026 · Strategy Cues</span>
-</footer>
+    <!-- YTD TAB -->
+    <div class="tab-pane active" id="tab-ytd">
+      <div class="sec-hdr">
+        <div class="sec-title">Year-to-Date Performance <span class="badge" id="ytd-badge"></span></div>
+      </div>
+      <div class="sum-row" id="ytd-sum"></div>
+      <div class="filter-bar">
+        <span class="f-lbl">Filter:</span>
+        <button class="fb active" onclick="setFilter('all',this)">All Units</button>
+        <button class="fb" onclick="setFilter('above-budget',this)">▲ Above Budget</button>
+        <button class="fb" onclick="setFilter('below-budget',this)">▼ Below Budget</button>
+        <button class="fb" onclick="setFilter('above-lyst',this)">▲ Above LYST</button>
+        <button class="fb" onclick="setFilter('below-lyst',this)">▼ Below LYST</button>
+        <button class="fb" onclick="setFilter('new',this)">✦ New Units</button>
+      </div>
+      <div class="legend">
+        <div class="li"><div class="ld" style="background:var(--text);"></div>Actual (ACT)</div>
+        <div class="li"><div class="ld" style="background:var(--gold);"></div>Budget (BUD)</div>
+        <div class="li"><div class="ld" style="background:#3B82F6;"></div>Last Year (LY)</div>
+        <div class="li"><div class="ld" style="background:var(--green);border-radius:50%;"></div>Above reference</div>
+        <div class="li"><div class="ld" style="background:var(--red);border-radius:50%;"></div>Below reference</div>
+      </div>
+      <div class="prop-grid" id="ytd-grid"></div>
+    </div>
 
+    <!-- OTB TAB -->
+    <div class="tab-pane" id="tab-otb">
+      <div class="sec-hdr">
+        <div class="sec-title">Forward On-The-Books <span class="badge" id="otb-badge"></span></div>
+      </div>
 
-</div>
+      <!-- Top KPI bar -->
+      <div class="otb-kpi-bar" id="otb-kpi-bar"></div>
 
-<!-- TAB 2: FORWARD OTB -->
-<div class="tab-panel" id="tab-otb">
+      <!-- Legend strip -->
+      <div class="legend" style="margin-bottom:.85rem;">
+        <div class="li"><div class="ld" style="background:var(--green);height:3px;width:18px;border-radius:2px;"></div>OTB OCC — ahead of LYST pace</div>
+        <div class="li"><div class="ld" style="background:var(--red);height:3px;width:18px;border-radius:2px;"></div>OTB OCC — behind LYST pace</div>
+        <div class="li"><div class="ld" style="background:#3B82F6;height:3px;width:18px;border-radius:2px;"></div>LYST OCC reference line</div>
+        <div class="li"><div class="ld" style="background:var(--gold);height:3px;width:18px;border-radius:2px;"></div>Budget benchmark</div>
+      </div>
 
-<div class="pace-legend">
-  <div class="pl-item"><div class="pl-bar" style="background:var(--green)"></div>OTB Occ — Ahead of LYST pace</div>
-  <div class="pl-item"><div class="pl-bar" style="background:var(--red)"></div>OTB Occ — Behind LYST pace</div>
-  <div class="pl-item"><div class="pl-bar" style="background:var(--blue)"></div>LYST Occ reference line</div>
-  <div class="pl-item"><span style="width:8px;height:8px;border-radius:2px;background:var(--gold);display:inline-block"></span>Budget benchmark</div>
-  <div style="margin-left:auto;font-family:'DM Mono',monospace;font-size:0.56rem;letter-spacing:0.1em;color:var(--muted);text-transform:uppercase">Top bar colour = vs Budget · Green = ahead · Red = behind</div>
-</div>
+      <!-- Action required tag strip -->
+      <div id="alert-section"></div>
 
-<div class="otb-summary-row" id="otbSummary"></div>
-<div class="otb-alert-bar" id="otbAlerts"></div>
-<div class="otb-grid" id="otbGrid"></div>
+      <!-- Property rows -->
+      <div class="otb-rows" id="otb-prop-rows"></div>
+    </div>
 
-<footer>
-  <span>zZZing Holiday Homes · Forward OTB · May–Sep 2026</span>
-  <span>As at 20 April 2026 · Strategy Cues</span>
-</footer>
-
+  </div>
 </div>
 
 <script>
-// ── TAB SWITCHER ──
-function switchTab(tab, btn) {
-  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
-  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
-  btn.classList.add('active');
-  document.getElementById('tab-'+tab).classList.add('active');
-  if (tab === 'otb' && !window._otbBuilt) { buildOTB(); window._otbBuilt = true; }
+// ─────────────────────────────────────────────────────────
+// DYNAMIC DATE LOGIC
+// YTD  = Jan of data year  →  current calendar month (inclusive)
+// OTB  = next month  →  last month available in the data
+// "current month" = whichever month we are in right now (today)
+// ─────────────────────────────────────────────────────────
+const MO_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+function todayLabel() {
+  // Returns e.g. "Apr 2026"
+  const d = new Date();
+  return `${MO_NAMES[d.getMonth()]} ${d.getFullYear()}`;
 }
 
-// ── OTB DATA ──
-const FWD_MONTHS = ['May','Jun','Jul','Aug','Sep'];
+function makeLabel(year, monthIdx) { // monthIdx 0-based
+  return `${MO_NAMES[monthIdx]} ${year}`;
+}
 
-const OTB = {"El Doris": {"May": {"otb_rev": 37648, "otb_occ": 57.0, "otb_adr": 142.0, "bud_rev": 57039, "bud_occ": null, "ly_rev": 42120, "ly_occ": 68.0, "ly_adr": 125.0}, "Jun": {"otb_rev": 28658, "otb_occ": 42.7, "otb_adr": 140.0, "bud_rev": 58321, "bud_occ": null, "ly_rev": 29467, "ly_occ": 43.0, "ly_adr": 142.0}, "Jul": {"otb_rev": 25583, "otb_occ": 37.2, "otb_adr": 134.0, "bud_rev": 65906, "bud_occ": null, "ly_rev": 13087, "ly_occ": 19.0, "ly_adr": 138.0}, "Aug": {"otb_rev": 22252, "otb_occ": 29.8, "otb_adr": 150.0, "bud_rev": 78445, "bud_occ": null, "ly_rev": 21760, "ly_occ": 30.0, "ly_adr": 146.0}, "Sep": {"otb_rev": 15603, "otb_occ": 24.6, "otb_adr": 132.0, "bud_rev": 62213, "bud_occ": null, "ly_rev": 25703, "ly_occ": 40.0, "ly_adr": 132.0}}, "El Doris SJ": {"May": {"otb_rev": 39352, "otb_occ": 64.9, "otb_adr": 119.0, "bud_rev": 58136, "bud_occ": null, "ly_rev": 39700, "ly_occ": 77.0, "ly_adr": 104.0}, "Jun": {"otb_rev": 45883, "otb_occ": 71.6, "otb_adr": 126.0, "bud_rev": 59442, "bud_occ": null, "ly_rev": 33323, "ly_occ": 59.0, "ly_adr": 117.0}, "Jul": {"otb_rev": 29978, "otb_occ": 38.5, "otb_adr": 146.0, "bud_rev": 67174, "bud_occ": null, "ly_rev": 28204, "ly_occ": 44.0, "ly_adr": 130.0}, "Aug": {"otb_rev": 33060, "otb_occ": 39.5, "otb_adr": 160.0, "bud_rev": 79953, "bud_occ": null, "ly_rev": 18197, "ly_occ": 25.0, "ly_adr": 146.0}, "Sep": {"otb_rev": 15046, "otb_occ": 16.0, "otb_adr": 195.0, "bud_rev": 63409, "bud_occ": null, "ly_rev": 26998, "ly_occ": 48.0, "ly_adr": 118.0}}, "Euginea  Court": {"May": {"otb_rev": 0, "otb_occ": 0.0, "otb_adr": 0.0, "bud_rev": null, "bud_occ": null, "ly_rev": null, "ly_occ": null, "ly_adr": null}, "Jun": {"otb_rev": 0, "otb_occ": 0.0, "otb_adr": 0.0, "bud_rev": null, "bud_occ": null, "ly_rev": null, "ly_occ": null, "ly_adr": null}, "Jul": {"otb_rev": 4521, "otb_occ": 21.9, "otb_adr": 133.0, "bud_rev": null, "bud_occ": null, "ly_rev": null, "ly_occ": null, "ly_adr": null}, "Aug": {"otb_rev": 3639, "otb_occ": 20.6, "otb_adr": 114.0, "bud_rev": null, "bud_occ": null, "ly_rev": null, "ly_occ": null, "ly_adr": null}, "Sep": {"otb_rev": 0, "otb_occ": 0.0, "otb_adr": 0.0, "bud_rev": null, "bud_occ": null, "ly_rev": null, "ly_occ": null, "ly_adr": null}}, "Florian Boutique": {"May": {"otb_rev": 11806, "otb_occ": 60.7, "otb_adr": 126.0, "bud_rev": 14367, "bud_occ": null, "ly_rev": 8806, "ly_occ": 53.0, "ly_adr": 107.0}, "Jun": {"otb_rev": 4934, "otb_occ": 32.0, "otb_adr": 103.0, "bud_rev": 14690, "bud_occ": null, "ly_rev": 3951, "ly_occ": 23.0, "ly_adr": 116.0}, "Jul": {"otb_rev": 4521, "otb_occ": 21.9, "otb_adr": 133.0, "bud_rev": 16601, "bud_occ": null, "ly_rev": 3267, "ly_occ": 17.0, "ly_adr": 121.0}, "Aug": {"otb_rev": 3639, "otb_occ": 20.6, "otb_adr": 114.0, "bud_rev": 19759, "bud_occ": null, "ly_rev": 3358, "ly_occ": 19.0, "ly_adr": 112.0}, "Sep": {"otb_rev": 0, "otb_occ": 0.0, "otb_adr": 0.0, "bud_rev": 15671, "bud_occ": null, "ly_rev": 4610, "ly_occ": 20.0, "ly_adr": 154.0}}, "Mensija Valley": {"May": {"otb_rev": 33595, "otb_occ": 56.8, "otb_adr": 191.0, "bud_rev": 42229, "bud_occ": null, "ly_rev": 39095, "ly_occ": 62.0, "ly_adr": 171.0}, "Jun": {"otb_rev": 29106, "otb_occ": 47.0, "otb_adr": 206.0, "bud_rev": 43178, "bud_occ": null, "ly_rev": 35706, "ly_occ": 51.0, "ly_adr": 195.0}, "Jul": {"otb_rev": 34368, "otb_occ": 37.5, "otb_adr": 277.0, "bud_rev": 48794, "bud_occ": null, "ly_rev": 35586, "ly_occ": 37.0, "ly_adr": 266.0}, "Aug": {"otb_rev": 31559, "otb_occ": 39.7, "otb_adr": 257.0, "bud_rev": 58077, "bud_occ": null, "ly_rev": 52780, "ly_occ": 55.0, "ly_adr": 260.0}, "Sep": {"otb_rev": 37502, "otb_occ": 55.3, "otb_adr": 226.0, "bud_rev": 46060, "bud_occ": null, "ly_rev": 25452, "ly_occ": 36.0, "ly_adr": 196.0}}, "Mosta Stays": {"May": {"otb_rev": 38358, "otb_occ": 45.1, "otb_adr": 107.0, "bud_rev": 68670, "bud_occ": null, "ly_rev": 40283, "ly_occ": 53.0, "ly_adr": 98.0}, "Jun": {"otb_rev": 28915, "otb_occ": 37.9, "otb_adr": 102.0, "bud_rev": 70214, "bud_occ": null, "ly_rev": 26083, "ly_occ": 33.0, "ly_adr": 106.0}, "Jul": {"otb_rev": 12320, "otb_occ": 12.3, "otb_adr": 130.0, "bud_rev": 79346, "bud_occ": null, "ly_rev": 11214, "ly_occ": 11.0, "ly_adr": 126.0}, "Aug": {"otb_rev": 13142, "otb_occ": 13.0, "otb_adr": 130.0, "bud_rev": 94442, "bud_occ": null, "ly_rev": 21254, "ly_occ": 22.0, "ly_adr": 124.0}, "Sep": {"otb_rev": 13655, "otb_occ": 10.0, "otb_adr": 182.0, "bud_rev": 74900, "bud_occ": null, "ly_rev": 27568, "ly_occ": 33.0, "ly_adr": 111.0}}, "Seashore Stays": {"May": {"otb_rev": 19917, "otb_occ": 50.0, "otb_adr": 143.0, "bud_rev": 25412, "bud_occ": null, "ly_rev": 15241, "ly_occ": 53.0, "ly_adr": 133.0}, "Jun": {"otb_rev": 23839, "otb_occ": 58.7, "otb_adr": 164.0, "bud_rev": 25984, "bud_occ": null, "ly_rev": 16233, "ly_occ": 47.0, "ly_adr": 166.0}, "Jul": {"otb_rev": 13278, "otb_occ": 29.4, "otb_adr": 182.0, "bud_rev": 29363, "bud_occ": null, "ly_rev": 18201, "ly_occ": 46.0, "ly_adr": 184.0}, "Aug": {"otb_rev": 15762, "otb_occ": 31.9, "otb_adr": 200.0, "bud_rev": 34949, "bud_occ": null, "ly_rev": 22551, "ly_occ": 58.0, "ly_adr": 179.0}, "Sep": {"otb_rev": 3796, "otb_occ": 6.2, "otb_adr": 253.0, "bud_rev": 27717, "bud_occ": null, "ly_rev": 19422, "ly_occ": 56.0, "ly_adr": 166.0}}, "Seaview Stays": {"May": {"otb_rev": 41620, "otb_occ": 44.2, "otb_adr": 116.0, "bud_rev": 79077, "bud_occ": null, "ly_rev": 59219, "ly_occ": 61.0, "ly_adr": 120.0}, "Jun": {"otb_rev": 40982, "otb_occ": 45.1, "otb_adr": 116.0, "bud_rev": 80854, "bud_occ": null, "ly_rev": 54002, "ly_occ": 52.0, "ly_adr": 132.0}, "Jul": {"otb_rev": 21134, "otb_occ": 20.7, "otb_adr": 127.0, "bud_rev": 91370, "bud_occ": null, "ly_rev": 38859, "ly_occ": 32.0, "ly_adr": 151.0}, "Aug": {"otb_rev": 10091, "otb_occ": 11.0, "otb_adr": 113.0, "bud_rev": 108753, "bud_occ": null, "ly_rev": 44687, "ly_occ": 32.0, "ly_adr": 171.0}, "Sep": {"otb_rev": 13605, "otb_occ": 9.6, "otb_adr": 181.0, "bud_rev": 86250, "bud_occ": null, "ly_rev": 44525, "ly_occ": 42.0, "ly_adr": 135.0}}, "Segond Boutique": {"May": {"otb_rev": 58210, "otb_occ": 44.0, "otb_adr": 83.0, "bud_rev": null, "bud_occ": null, "ly_rev": 52564, "ly_occ": 46.0, "ly_adr": 73.0}, "Jun": {"otb_rev": 32234, "otb_occ": 22.4, "otb_adr": 89.0, "bud_rev": null, "bud_occ": null, "ly_rev": 36068, "ly_occ": 28.0, "ly_adr": 85.0}, "Jul": {"otb_rev": 18512, "otb_occ": 9.5, "otb_adr": 117.0, "bud_rev": null, "bud_occ": null, "ly_rev": 33827, "ly_occ": 23.0, "ly_adr": 95.0}, "Aug": {"otb_rev": 23950, "otb_occ": 12.5, "otb_adr": 105.0, "bud_rev": null, "bud_occ": null, "ly_rev": 21108, "ly_occ": 13.0, "ly_adr": 107.0}, "Sep": {"otb_rev": 10904, "otb_occ": 6.3, "otb_adr": 114.0, "bud_rev": null, "bud_occ": null, "ly_rev": 13832, "ly_occ": 9.0, "ly_adr": 95.0}}, "South 32 Hotel": {"May": {"otb_rev": 65093, "otb_occ": 62.9, "otb_adr": 99.0, "bud_rev": 70700, "bud_occ": null, "ly_rev": null, "ly_occ": null, "ly_adr": null}, "Jun": {"otb_rev": 32629, "otb_occ": 30.0, "otb_adr": 113.0, "bud_rev": 85000, "bud_occ": null, "ly_rev": null, "ly_occ": null, "ly_adr": null}, "Jul": {"otb_rev": 29435, "otb_occ": 25.1, "otb_adr": 118.0, "bud_rev": 110000, "bud_occ": null, "ly_rev": null, "ly_occ": null, "ly_adr": null}, "Aug": {"otb_rev": 7324, "otb_occ": 6.0, "otb_adr": 122.0, "bud_rev": 110000, "bud_occ": null, "ly_rev": null, "ly_occ": null, "ly_adr": null}, "Sep": {"otb_rev": 2550, "otb_occ": 1.6, "otb_adr": 170.0, "bud_rev": 109000, "bud_occ": null, "ly_rev": null, "ly_occ": null, "ly_adr": null}}, "Spinola Stays": {"May": {"otb_rev": 40838, "otb_occ": 55.1, "otb_adr": 129.0, "bud_rev": 65403, "bud_occ": null, "ly_rev": 42267, "ly_occ": 65.0, "ly_adr": 116.0}, "Jun": {"otb_rev": 38661, "otb_occ": 45.5, "otb_adr": 153.0, "bud_rev": 66873, "bud_occ": null, "ly_rev": 35097, "ly_occ": 50.0, "ly_adr": 131.0}, "Jul": {"otb_rev": 41621, "otb_occ": 38.9, "otb_adr": 185.0, "bud_rev": 75570, "bud_occ": null, "ly_rev": 35184, "ly_occ": 44.0, "ly_adr": 142.0}, "Aug": {"otb_rev": 29620, "otb_occ": 23.7, "otb_adr": 224.0, "bud_rev": 89948, "bud_occ": null, "ly_rev": 31181, "ly_occ": 39.0, "ly_adr": 145.0}, "Sep": {"otb_rev": 18780, "otb_occ": 14.1, "otb_adr": 247.0, "bud_rev": 71336, "bud_occ": null, "ly_rev": 24956, "ly_occ": 31.0, "ly_adr": 148.0}}, "Stuart": {"May": {"otb_rev": 42574, "otb_occ": 56.3, "otb_adr": 121.0, "bud_rev": 64962, "bud_occ": null, "ly_rev": 39487, "ly_occ": 55.0, "ly_adr": 115.0}, "Jun": {"otb_rev": 28424, "otb_occ": 39.2, "otb_adr": 121.0, "bud_rev": 66423, "bud_occ": null, "ly_rev": 31339, "ly_occ": 46.0, "ly_adr": 115.0}, "Jul": {"otb_rev": 4323, "otb_occ": 5.5, "otb_adr": 127.0, "bud_rev": 75061, "bud_occ": null, "ly_rev": 11418, "ly_occ": 14.0, "ly_adr": 131.0}, "Aug": {"otb_rev": 5259, "otb_occ": 7.3, "otb_adr": 117.0, "bud_rev": 89342, "bud_occ": null, "ly_rev": 2527, "ly_occ": 3.0, "ly_adr": 120.0}, "Sep": {"otb_rev": 790, "otb_occ": 0.8, "otb_adr": 158.0, "bud_rev": 70855, "bud_occ": null, "ly_rev": 15092, "ly_occ": 22.0, "ly_adr": 114.0}}, "Ta Gianni": {"May": {"otb_rev": 11013, "otb_occ": 57.5, "otb_adr": 103.0, "bud_rev": 13287, "bud_occ": null, "ly_rev": 9503, "ly_occ": 58.0, "ly_adr": 88.0}, "Jun": {"otb_rev": 9191, "otb_occ": 49.4, "otb_adr": 103.0, "bud_rev": 13586, "bud_occ": null, "ly_rev": 9583, "ly_occ": 57.0, "ly_adr": 93.0}, "Jul": {"otb_rev": 2119, "otb_occ": 16.1, "otb_adr": 71.0, "bud_rev": 15353, "bud_occ": null, "ly_rev": 9578, "ly_occ": 48.0, "ly_adr": 106.0}, "Aug": {"otb_rev": 3501, "otb_occ": 29.6, "otb_adr": 64.0, "bud_rev": 18274, "bud_occ": null, "ly_rev": 10941, "ly_occ": 52.0, "ly_adr": 113.0}, "Sep": {"otb_rev": 1383, "otb_occ": 12.2, "otb_adr": 63.0, "bud_rev": 14492, "bud_occ": null, "ly_rev": 5741, "ly_occ": 37.0, "ly_adr": 86.0}}, "Ta Guzzepi": {"May": {"otb_rev": 12120, "otb_occ": 40.5, "otb_adr": 107.0, "bud_rev": 24568, "bud_occ": null, "ly_rev": null, "ly_occ": null, "ly_adr": null}, "Jun": {"otb_rev": 10610, "otb_occ": 34.4, "otb_adr": 114.0, "bud_rev": 25120, "bud_occ": null, "ly_rev": null, "ly_occ": null, "ly_adr": null}, "Jul": {"otb_rev": 6638, "otb_occ": 21.1, "otb_adr": 113.0, "bud_rev": 28387, "bud_occ": null, "ly_rev": null, "ly_occ": null, "ly_adr": null}, "Aug": {"otb_rev": 7701, "otb_occ": 25.1, "otb_adr": 110.0, "bud_rev": 33788, "bud_occ": null, "ly_rev": null, "ly_occ": null, "ly_adr": null}, "Sep": {"otb_rev": 3460, "otb_occ": 13.7, "otb_adr": 94.0, "bud_rev": 26796, "bud_occ": null, "ly_rev": null, "ly_adr": null}}, "Yolanda Boutique": {"May": {"otb_rev": 40404, "otb_occ": 77.9, "otb_adr": 120.0, "bud_rev": 48275, "bud_occ": null, "ly_rev": null, "ly_occ": null, "ly_adr": null}, "Jun": {"otb_rev": 21003, "otb_occ": 36.9, "otb_adr": 136.0, "bud_rev": 49360, "bud_occ": null, "ly_rev": null, "ly_occ": null, "ly_adr": null}, "Jul": {"otb_rev": 6853, "otb_occ": 12.2, "otb_adr": 129.0, "bud_rev": 55780, "bud_occ": null, "ly_rev": null, "ly_occ": null, "ly_adr": null}, "Aug": {"otb_rev": 3093, "otb_occ": 4.6, "otb_adr": 155.0, "bud_rev": 66392, "bud_occ": null, "ly_rev": null, "ly_occ": null, "ly_adr": null}, "Sep": {"otb_rev": 4235, "otb_occ": 7.1, "otb_adr": 141.0, "bud_rev": 52654, "bud_occ": null, "ly_rev": null, "ly_occ": null, "ly_adr": null}}};
+function lystLabel(label) {
+  // "Apr 2026" → "Apr 2025"
+  const [mo, yr] = label.split(' ');
+  return `${mo} ${parseInt(yr) - 1}`;
+}
 
-function fmtK(v){ if(!v) return '€0'; return v>=1000?'€'+(v/1000).toFixed(1)+'k':'€'+v; }
-function fmtOcc(v){ return v===null||v===undefined?'—':v.toFixed(1)+'%'; }
+// Given the set of all data month labels, compute YTD and OTB arrays
+function computeRanges(allDataMonths) {
+  const today = new Date();
+  const todayYear = today.getFullYear();
+  const todayMonthIdx = today.getMonth(); // 0-based
 
-function buildOTBSummary(){
-  let totOTB=0, totBud=0, totLY=0, urgentUnits=new Set();
-  for(const u of Object.keys(OTB)){
-    for(const m of FWD_MONTHS){
-      const d=OTB[u][m]; if(!d) continue;
-      totOTB+=d.otb_rev||0;
-      if(d.bud_rev) totBud+=d.bud_rev;
-      if(d.ly_rev&&d.ly_rev>0) totLY+=d.ly_rev;
-      if(d.bud_rev && d.otb_occ<30 && d.bud_rev>30000) urgentUnits.add(u);
-    }
+  // Determine data year: pick the most recent year in allDataMonths
+  const years = [...new Set(allDataMonths.map(l => parseInt(l.split(' ')[1])))].sort();
+  const dataYear = years[years.length - 1]; // e.g. 2026
+
+  // Build sorted list of all data year months that exist in the data
+  const dataYearMonths = allDataMonths
+    .filter(l => parseInt(l.split(' ')[1]) === dataYear)
+    .sort((a, b) => MO_NAMES.indexOf(a.split(' ')[0]) - MO_NAMES.indexOf(b.split(' ')[0]));
+
+  // YTD cutoff: if today is in the data year, use today's month; otherwise use all
+  let ytdCutoffIdx; // 0-based month index (inclusive)
+  if (todayYear === dataYear) {
+    ytdCutoffIdx = todayMonthIdx; // e.g. April = 3
+  } else if (todayYear > dataYear) {
+    ytdCutoffIdx = 11; // All months
+  } else {
+    ytdCutoffIdx = -1; // No YTD (future year)
   }
-  const budGap = totBud - totOTB;
-  const lyVar = totLY ? ((totOTB-totLY)/totLY*100) : null;
-  document.getElementById('otbSummary').innerHTML = `
-    <div class="sum-card"><div class="sum-label">Total OTB · May–Sep</div><div class="sum-val">${fmtK(totOTB)}</div><div class="sum-sub">Revenue on the books today</div></div>
-    <div class="sum-card"><div class="sum-label">Budget Target · May–Sep</div><div class="sum-val">${fmtK(totBud)}</div><div class="sum-sub"><span class="${budGap>0?'neg':'pos'}">${budGap>0?'▼':''} €${Math.abs(budGap/1000).toFixed(0)}k gap to fill</span></div></div>
-    <div class="sum-card"><div class="sum-label">vs LYST Pace</div><div class="sum-val" style="color:${lyVar===null?'var(--muted)':lyVar>=0?'var(--green)':'var(--red)'}">${lyVar===null?'N/A':(lyVar>=0?'▲':'▼')+Math.abs(lyVar).toFixed(1)+'%'}</div><div class="sum-sub">vs same period 2025 OTB</div></div>
-    <div class="sum-card"><div class="sum-label">Units Needing Attention</div><div class="sum-val" style="color:var(--orange)">${urgentUnits.size}</div><div class="sum-sub">&lt;30% OTB occ with high budget targets</div></div>
-  `;
+
+  const ytdMonths = dataYearMonths.filter(l => MO_NAMES.indexOf(l.split(' ')[0]) <= ytdCutoffIdx);
+  const otbMonths = dataYearMonths.filter(l => MO_NAMES.indexOf(l.split(' ')[0]) > ytdCutoffIdx);
+
+  return { ytdMonths, otbMonths, dataYear };
 }
 
-function buildOTBAlerts(){
-  const alerts=[];
-  for(const u of Object.keys(OTB)){
-    for(const m of FWD_MONTHS){
-      const d=OTB[u][m]; if(!d||!d.otb_occ) continue;
-      if(d.bud_rev && d.otb_occ < 20 && d.bud_rev > 40000) alerts.push({unit:u,month:m,occ:d.otb_occ,gap:d.bud_rev-d.otb_rev,level:'danger'});
-      else if(d.bud_rev && d.otb_occ < 35 && d.bud_rev > 50000) alerts.push({unit:u,month:m,occ:d.otb_occ,gap:d.bud_rev-d.otb_rev,level:'warn'});
-    }
+// ─────────────────────────────────────────────────────────
+// STATE
+// ─────────────────────────────────────────────────────────
+let dashData = null, allCharts = {}, currentFilter = 'all';
+
+// ─────────────────────────────────────────────────────────
+// FILE HANDLING
+// ─────────────────────────────────────────────────────────
+const dz = document.getElementById('drop-zone');
+const fi = document.getElementById('file-input');
+const st = document.getElementById('up-status');
+
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('drag-over'); if (e.dataTransfer.files[0]) processFile(e.dataTransfer.files[0]); });
+fi.addEventListener('change', e => { if (e.target.files[0]) processFile(e.target.files[0]); });
+
+function setStatus(msg, err = false) { st.textContent = msg; st.className = err ? 'err' : ''; }
+
+function processFile(file) {
+  if (!file.name.match(/\.(xlsx|xls)$/i)) { setStatus('Please upload an .xlsx or .xls file', true); return; }
+  setStatus('Reading file…');
+  const r = new FileReader();
+  r.onload = e => {
+    try {
+      const wb = XLSX.read(e.target.result, { type: 'array', cellDates: true });
+      const ai = wb.SheetNames.findIndex(s => s.toLowerCase().includes('actual'));
+      const bi = wb.SheetNames.findIndex(s => s.toLowerCase().includes('budget'));
+      if (ai === -1 || bi === -1) { setStatus('Cannot find Actuals / Budget sheets.', true); return; }
+      const aRaw = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[ai]], { header: 1, defval: null });
+      const bRaw = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[bi]], { header: 1, defval: null });
+      setStatus('Parsing…');
+      dashData = parseData(aRaw, bRaw);
+      if (!dashData) { setStatus('Could not parse structure — check column layout.', true); return; }
+      setStatus('');
+      showDashboard(file.name);
+    } catch (err) { setStatus('Error: ' + err.message, true); console.error(err); }
+  };
+  r.readAsArrayBuffer(file);
+}
+
+// ─────────────────────────────────────────────────────────
+// PARSING
+// ─────────────────────────────────────────────────────────
+function normDate(cell) {
+  if (!cell) return null;
+  if (cell instanceof Date) return `${MO_NAMES[cell.getMonth()]} ${cell.getFullYear()}`;
+  const s = String(cell).trim();
+  const iso = s.match(/^(\d{4})-(\d{2})/);
+  if (iso) return `${MO_NAMES[parseInt(iso[2]) - 1]} ${iso[1]}`;
+  if (s.match(/^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{4}$/)) return s;
+  return null;
+}
+
+function parseData(aRaw, bRaw) {
+  if (!aRaw || aRaw.length < 3) return null;
+
+  // Find properties from row 0
+  const propRow = aRaw[0];
+  const properties = [];
+  for (let i = 0; i < propRow.length; i++) {
+    const v = propRow[i];
+    if (v && typeof v === 'string' && v.trim().length > 2 && !v.trim().toLowerCase().startsWith('sp'))
+      properties.push({ name: v.trim(), col: i });
   }
-  const chips = alerts.map(a=>`<span class="alert-chip ${a.level==='danger'?'danger':''}">${a.unit} · ${a.month} · ${a.occ.toFixed(0)}% OTB · €${(a.gap/1000).toFixed(0)}k gap</span>`).join('');
-  document.getElementById('otbAlerts').innerHTML =
-    `<span class="alert-title">⚠ Action Required</span><div class="alert-chips">${chips||'<span style="font-family:DM Mono,monospace;font-size:0.6rem;color:var(--muted)">No critical alerts</span>'}</div>`;
+  if (!properties.length) return null;
+
+  // Index all rows by normalised date for O(1) lookup
+  function indexRows(raw) {
+    const idx = {};
+    for (let r = 2; r < raw.length; r++) {
+      const lbl = normDate(raw[r][0]);
+      if (lbl) idx[lbl] = raw[r];
+    }
+    return idx;
+  }
+  const aIdx = indexRows(aRaw);
+  const bIdx = indexRows(bRaw);
+  const allDataMonths = Object.keys(aIdx); // All months present in Actuals sheet
+
+  // Compute dynamic YTD / OTB ranges
+  const { ytdMonths, otbMonths } = computeRanges(allDataMonths);
+  if (!ytdMonths.length && !otbMonths.length) return null;
+
+  const ALL = [...ytdMonths, ...otbMonths];
+
+  function getNum(row, col) {
+    if (!row || col >= row.length) return 0;
+    const n = parseFloat(row[col]);
+    return isNaN(n) ? 0 : n;
+  }
+  function triple(idx, label, prop) {
+    const row = idx[label];
+    return {
+      rev: getNum(row, prop.col),
+      adr: getNum(row, prop.col + 1),
+      occ: getNum(row, prop.col + 2)
+    };
+  }
+
+  const result = { properties: properties.map(p => p.name), propData: {}, ytdMonths, otbMonths };
+
+  for (const prop of properties) {
+    const pd = {};
+    for (const m of ALL) {
+      pd[m] = {
+        actual: triple(aIdx, m, prop),
+        budget: triple(bIdx, m, prop),
+        lyst: triple(aIdx, lystLabel(m), prop)
+      };
+    }
+    result.propData[prop.name] = pd;
+  }
+  return result;
 }
 
-function buildOTBGrid(){
-  const grid = document.getElementById('otbGrid');
-  const units = Object.keys(OTB).filter(u => FWD_MONTHS.some(m => OTB[u][m] && OTB[u][m].otb_rev > 0));
+// ─────────────────────────────────────────────────────────
+// DASHBOARD INIT
+// ─────────────────────────────────────────────────────────
+function showDashboard(filename) {
+  document.getElementById('upload-screen').style.display = 'none';
+  document.getElementById('dashboard').style.display = 'block';
+  document.getElementById('top-file').textContent = filename;
 
-  grid.innerHTML = units.map(unit => {
-    const ud = OTB[unit];
-    const totOTB = FWD_MONTHS.reduce((s,m)=>s+(ud[m]?.otb_rev||0),0);
-    const totBud = FWD_MONTHS.reduce((s,m)=>s+(ud[m]?.bud_rev||0),0);
-    const gap = totBud ? totBud - totOTB : null;
+  const { ytdMonths, otbMonths } = dashData;
+  const today = new Date();
+  document.getElementById('date-pill').textContent =
+    `Today: ${MO_NAMES[today.getMonth()]} ${today.getFullYear()}`;
 
-    const tracks = FWD_MONTHS.map(m => {
-      const d = ud[m];
-      if (!d || (d.otb_rev === 0 && d.otb_occ === 0)) {
-        return `<div class="month-track mt-empty"><div class="mt-month">${m}</div><div class="no-data" style="font-size:0.52rem;color:var(--muted);font-family:'DM Mono',monospace">No OTB</div></div>`;
+  // Tab labels with dynamic ranges
+  const ytdFirst = ytdMonths[0]?.split(' ')[0] ?? '';
+  const ytdLast  = ytdMonths[ytdMonths.length - 1]?.split(' ')[0] ?? '';
+  const otbFirst = otbMonths[0]?.split(' ')[0] ?? '';
+  const otbLast  = otbMonths[otbMonths.length - 1]?.split(' ')[0] ?? '';
+  const yr = ytdMonths[0]?.split(' ')[1] ?? '';
+
+  document.getElementById('tab-btn-ytd').textContent = `YTD Actuals — ${ytdFirst}–${ytdLast} ${yr}`;
+  document.getElementById('tab-btn-otb').textContent = otbMonths.length
+    ? `Forward OTB — ${otbFirst}–${otbLast} ${yr}` : 'Forward OTB — No future data';
+  document.getElementById('ytd-badge').textContent = `${ytdFirst} – ${ytdLast} ${yr} · ${ytdMonths.length} month${ytdMonths.length !== 1 ? 's' : ''}`;
+  document.getElementById('otb-badge').textContent = otbMonths.length
+    ? `${otbFirst} – ${otbLast} ${yr} · ${otbMonths.length} months` : 'N/A';
+
+  renderYTDSummary();
+  renderYTDGrid();
+  renderOTB();
+}
+
+function resetDashboard() {
+  Object.values(allCharts).forEach(c => c.destroy());
+  allCharts = {}; dashData = null; currentFilter = 'all'; fi.value = '';
+  ['ytd-grid','ytd-sum','otb-prop-rows','otb-kpi-bar','alert-section']
+    .forEach(id => { const el = document.getElementById(id); if(el) el.innerHTML = ''; });
+  document.getElementById('dashboard').style.display = 'none';
+  document.getElementById('upload-screen').style.display = 'flex';
+  document.querySelectorAll('.fb').forEach((b, i) => b.classList.toggle('active', i === 0));
+}
+
+function switchTab(tab) {
+  document.querySelectorAll('.tab-btn').forEach((b, i) => b.classList.toggle('active', (tab === 'ytd' && i === 0) || (tab === 'otb' && i === 1)));
+  document.querySelectorAll('.tab-pane').forEach((p, i) => p.classList.toggle('active', (tab === 'ytd' && i === 0) || (tab === 'otb' && i === 1)));
+}
+
+// ─────────────────────────────────────────────────────────
+// YTD SUMMARY CARDS
+// ─────────────────────────────────────────────────────────
+function renderYTDSummary() {
+  const { ytdMonths, properties, propData } = dashData;
+  let tR = 0, tB = 0, tL = 0, abv = 0, blw = 0, newU = 0;
+  for (const prop of properties) {
+    const pd = propData[prop];
+    let r = 0, b = 0, l = 0, hasL = false;
+    for (const m of ytdMonths) {
+      r += pd[m].actual.rev; b += pd[m].budget.rev; l += pd[m].lyst.rev;
+      if (pd[m].lyst.rev > 0) hasL = true;
+    }
+    tR += r; tB += b; tL += l;
+    if (!hasL || l === 0) newU++;
+    else if (r >= b) abv++;
+    else blw++;
+  }
+  const bP = tB > 0 ? (tR - tB) / tB * 100 : 0;
+  const lP = tL > 0 ? (tR - tL) / tL * 100 : 0;
+  document.getElementById('ytd-sum').innerHTML = [
+    { lbl: 'Total Revenue YTD',   val: fC(tR),        dlt: `${sg(bP)}${Math.abs(bP).toFixed(1)}% vs Budget`, cls: bP >= 0 ? 'up' : 'dn' },
+    { lbl: 'vs Budget',           val: fC(tR - tB),   dlt: `Budget: ${fC(tB)}`,  cls: tR >= tB ? 'up' : 'dn' },
+    { lbl: 'vs Last Year',        val: fC(tR - tL),   dlt: `LYST: ${fC(tL)}`,    cls: tR >= tL ? 'up' : 'dn' },
+    { lbl: 'Properties',          val: properties.length, dlt: `${abv} above · ${blw} below budget`, cls: 'nt' },
+    { lbl: 'Above Budget',        val: abv,            dlt: `of ${properties.length - newU} tracked`, cls: 'up' },
+    { lbl: 'New Units (no LYST)', val: newU,           dlt: 'No prior year data', cls: 'nt' }
+  ].map(m => `<div class="mc"><div class="mc-lbl">${m.lbl}</div><div class="mc-val">${m.val}</div><div class="mc-delta ${m.cls}">${m.dlt}</div></div>`).join('');
+}
+
+// ─────────────────────────────────────────────────────────
+// YTD PROPERTY GRID — reference card design
+// ─────────────────────────────────────────────────────────
+function renderYTDGrid() {
+  const { ytdMonths, properties, propData } = dashData;
+  const grid = document.getElementById('ytd-grid');
+  grid.innerHTML = '';
+
+  for (const prop of properties) {
+    const pd = propData[prop];
+
+    // YTD aggregates
+    let tR = 0, tB = 0, tL = 0, hasL = false;
+    for (const m of ytdMonths) {
+      tR += pd[m].actual.rev; tB += pd[m].budget.rev; tL += pd[m].lyst.rev;
+      if (pd[m].lyst.rev > 0) hasL = true;
+    }
+    const isNew = !hasL || tL === 0;
+    const abvB  = tR >= tB && tB > 0;
+    const abvL  = !isNew && tR >= tL;
+
+    const ytdRange = `${ytdMonths[0].split(' ')[0]}–${ytdMonths[ytdMonths.length-1].split(' ')[0]} TOTAL`;
+
+    // Budget/LYST deltas (YTD totals)
+    const bPct = tB > 0 ? (tR - tB) / tB * 100 : null;
+    const lPct = tL > 0 ? (tR - tL) / tL * 100 : null;
+
+    // Revenue bars: scale relative to max of the three
+    const maxRev = Math.max(tR, tB, tL, 1);
+    function barW(v) { return Math.max(2, Math.round(v / maxRev * 100)); }
+
+    // ── Monthly detail columns
+    const moColsHTML = ytdMonths.map(m => {
+      const a = pd[m].actual, b = pd[m].budget, l = pd[m].lyst;
+      const moName = m.split(' ')[0].toUpperCase();
+
+      function metricBlock(label, actVal, budVal, lyVal, fmt) {
+        const vB = budVal > 0 ? actVal - budVal : null;
+        const vL = lyVal  > 0 ? actVal - lyVal  : null;
+        function pctStr(v, ref) { return Math.abs(v/ref*100).toFixed(0)+'%'; }
+        const budDelta = vB !== null ? (label === 'REV' ? pctStr(vB,budVal)
+            : label === 'OCC' ? Math.abs(vB*100).toFixed(0)+'%'
+            : '€'+Math.abs(Math.round(vB))) : null;
+        const lyDelta = vL !== null ? (label === 'REV' ? pctStr(vL,lyVal)
+            : label === 'OCC' ? Math.abs(vL*100).toFixed(0)+'%'
+            : '€'+Math.abs(Math.round(vL))) : null;
+
+        return `<div class="mm-block">
+          <div class="mm-label">${label}</div>
+          <div class="mm-val">${actVal > 0 ? fmt(actVal) : '—'}</div>
+          <div class="mm-refs">
+            ${budVal > 0 ? `<div class="mm-ref">
+              <div class="mm-ref-icon" style="background:var(--gold);"></div>
+              <span style="color:var(--text3);font-size:8px;">${fmt(budVal)}</span>
+              ${budDelta !== null ? `<span class="mm-ref-delta ${vB >= 0 ? 'up' : 'dn'}">${vB >= 0 ? '▲' : '▼'}${budDelta}</span>` : ''}
+            </div>` : ''}
+            ${lyVal > 0 ? `<div class="mm-ref">
+              <div class="mm-ref-icon" style="background:#3B82F6;"></div>
+              <span style="color:var(--text3);font-size:8px;">${fmt(lyVal)}</span>
+              ${lyDelta !== null ? `<span class="mm-ref-delta ${vL >= 0 ? 'up' : 'dn'}">${vL >= 0 ? '▲' : '▼'}${lyDelta}</span>` : ''}
+            </div>` : ''}
+          </div>
+        </div>`;
       }
-      const hasBud = d.bud_rev !== null;
-      const hasLY  = d.ly_occ !== null && d.ly_occ > 0;
-      const pace   = hasLY ? (d.otb_occ >= d.ly_occ ? 'ahead' : 'behind') : 'neutral';
-      const topCls = hasBud ? (d.otb_rev >= d.bud_rev ? 'mt-ahead-bud' : 'mt-behind-bud') : 'mt-no-bud';
-      const barW   = Math.min(100, d.otb_occ);
-      const lyTickPos = hasLY ? Math.min(100, d.ly_occ) : null;
-      const revGap = hasBud ? d.bud_rev - d.otb_rev : null;
-      const occStyle = d.otb_occ >= 60 ? 'color:var(--green)' : d.otb_occ < 30 ? 'color:var(--red)' : 'color:var(--white)';
 
-      return `<div class="month-track ${topCls}">
-        <div class="mt-month">${m}</div>
-        <div class="mt-occ-bar-wrap">
-          <div class="mt-occ-bar pace-${pace}" data-w="${barW}%" style="width:0%"></div>
-          ${lyTickPos!==null ? `<div class="mt-ly-tick" style="left:${lyTickPos}%"></div>` : ''}
-        </div>
-        <div class="mt-rev">${fmtK(d.otb_rev)}</div>
-        <div class="mt-occ" style="${occStyle}">${fmtOcc(d.otb_occ)}</div>
-        <div class="mt-adr">ADR €${d.otb_adr||'—'}</div>
-        <div class="mt-comps">
-          ${hasBud ? `<div class="mt-comp-row"><div class="comp-dot cd-bud"></div><span style="color:var(--muted)">${fmtK(d.bud_rev)}</span></div>` : ''}
-          ${hasLY  ? `<div class="mt-comp-row"><div class="comp-dot cd-ly"></div><span style="color:var(--muted)">${fmtK(d.ly_rev)} · ${d.ly_occ}%</span></div>` : ''}
-        </div>
-        ${revGap!==null ? `<div class="gap-label">Gap to bud</div><div class="gap-val ${revGap>0?'gap-red':'gap-grn'}">${revGap>0?'+':'-'}${fmtK(Math.abs(revGap))}</div>` : ''}
+      return `<div class="mo-col">
+        <div class="mo-col-month">${moName}</div>
+        ${metricBlock('REV', a.rev, b.rev, l.rev, fCS)}
+        ${metricBlock('OCC', a.occ, b.occ, l.occ, v => (v*100).toFixed(1)+'%')}
+        ${metricBlock('ADR', a.adr, b.adr, l.adr, v => '€'+Math.round(v))}
       </div>`;
     }).join('');
 
-    return `<div class="otb-unit-row">
-      <div>
-        <div class="otb-unit-name">${unit}</div>
-        <div class="otb-unit-total">OTB total: ${fmtK(totOTB)}</div>
-        ${gap!==null ? `<div style="font-family:'DM Mono',monospace;font-size:0.56rem;margin-top:0.3rem;color:${gap>0?'var(--red)':'var(--green)'}">
-          ${gap>0?'▼ €'+(gap/1000).toFixed(0)+'k behind budget':'▲ €'+Math.abs(gap/1000).toFixed(0)+'k ahead'}
-        </div>` : '<div style="font-family:DM Mono,monospace;font-size:0.5rem;color:var(--muted);margin-top:0.2rem">No budget set</div>'}
-      </div>
-      <div class="month-track-grid">${tracks}</div>
-    </div>`;
-  }).join('');
+    const sid = prop.replace(/\W+/g, '_');
+    const card = document.createElement('div');
+    card.className = 'pc'; card.id = 'card-' + sid;
+    card.dataset.aboveBudget = abvB ? '1' : '0';
+    card.dataset.belowBudget = (!abvB && !isNew) ? '1' : '0';
+    card.dataset.aboveLyst   = abvL ? '1' : '0';
+    card.dataset.belowLyst   = (!abvL && !isNew) ? '1' : '0';
+    card.dataset.isNew        = isNew ? '1' : '0';
 
-  // Animate bars
-  setTimeout(()=>{
-    document.querySelectorAll('.mt-occ-bar[data-w]').forEach(el=>{
-      el.style.width = el.getAttribute('data-w');
-    });
-  }, 120);
-}
-
-function buildOTB(){
-  buildOTBSummary();
-  buildOTBAlerts();
-  buildOTBGrid();
-}
-
-const MONTHS = ['Jan','Feb','Mar','Apr'];
-
-const DATA = {"El Doris": {"Jan": {"act_rev": 23690, "act_adr": 74.0, "act_occ": 69.9, "bud_rev": 18377, "bud_adr": null, "bud_occ": null, "ly_rev": 17486, "ly_adr": 62.0, "ly_occ": 59.0}, "Feb": {"act_rev": 24840, "act_adr": 72.0, "act_occ": 80.9, "bud_rev": 15836, "bud_adr": null, "bud_occ": null, "ly_rev": 15068, "ly_adr": 60.0, "ly_occ": 56.0}, "Mar": {"act_rev": 34100, "act_adr": 81.0, "act_occ": 90.8, "bud_rev": 31839, "bud_adr": null, "bud_occ": null, "ly_rev": 30294, "ly_adr": 70.0, "ly_occ": 87.0}, "Apr": {"act_rev": 43885, "act_adr": 108.0, "act_occ": 90.2, "bud_rev": 47283, "bud_adr": null, "bud_occ": null, "ly_rev": 43919, "ly_adr": 95.0, "ly_occ": 96.0}}, "El Doris SJ": {"Jan": {"act_rev": 17724, "act_adr": 59.0, "act_occ": 60.4, "bud_rev": 18730, "bud_adr": null, "bud_occ": null, "ly_rev": null, "ly_adr": 0.0, "ly_occ": 0.0}, "Feb": {"act_rev": 17185, "act_adr": 63.0, "act_occ": 61.2, "bud_rev": 16141, "bud_adr": null, "bud_occ": null, "ly_rev": 3609, "ly_adr": 43.0, "ly_occ": 23.0}, "Mar": {"act_rev": 26333, "act_adr": 64.0, "act_occ": 83.5, "bud_rev": 32452, "bud_adr": null, "bud_occ": null, "ly_rev": 19094, "ly_adr": 62.0, "ly_occ": 62.0}, "Apr": {"act_rev": 44426, "act_adr": 100.0, "act_occ": 92.8, "bud_rev": 48192, "bud_adr": null, "bud_occ": null, "ly_rev": 40515, "ly_adr": 89.0, "ly_occ": 94.0}}, "Florian Boutique": {"Jan": {"act_rev": 4151, "act_adr": 53.0, "act_occ": 51.7, "bud_rev": 4629, "bud_adr": null, "bud_occ": null, "ly_rev": 5389, "ly_adr": 60.0, "ly_occ": 57.0}, "Feb": {"act_rev": 4135, "act_adr": 53.0, "act_occ": 56.1, "bud_rev": 3989, "bud_adr": null, "bud_occ": null, "ly_rev": 4821, "ly_adr": 57.0, "ly_occ": 60.0}, "Mar": {"act_rev": 7445, "act_adr": 60.0, "act_occ": 80.0, "bud_rev": 8020, "bud_adr": null, "bud_occ": null, "ly_rev": 7963, "ly_adr": 67.0, "ly_occ": 75.0}, "Apr": {"act_rev": 11839, "act_adr": 90.0, "act_occ": 88.0, "bud_rev": 11910, "bud_adr": null, "bud_occ": null, "ly_rev": 13093, "ly_adr": 99.0, "ly_occ": 89.0}}, "Mensija Valley": {"Jan": {"act_rev": 9735, "act_adr": 64.0, "act_occ": 49.4, "bud_rev": 13605, "bud_adr": null, "bud_occ": null, "ly_rev": 13097, "ly_adr": 61.0, "ly_occ": 62.0}, "Feb": {"act_rev": 12773, "act_adr": 58.0, "act_occ": 78.8, "bud_rev": 11724, "bud_adr": null, "bud_occ": null, "ly_rev": 17503, "ly_adr": 69.0, "ly_occ": 84.0}, "Mar": {"act_rev": 18130, "act_adr": 75.0, "act_occ": 80.1, "bud_rev": 23572, "bud_adr": null, "bud_occ": null, "ly_rev": 18241, "ly_adr": 74.0, "ly_occ": 70.0}, "Apr": {"act_rev": 31086, "act_adr": 138.0, "act_occ": 75.3, "bud_rev": 35006, "bud_adr": null, "bud_occ": null, "ly_rev": 37752, "ly_adr": 132.0, "ly_occ": 82.0}}, "Mosta Stays": {"Jan": {"act_rev": 17410, "act_adr": 44.0, "act_occ": 55.5, "bud_rev": 22124, "bud_adr": null, "bud_occ": null, "ly_rev": 10148, "ly_adr": 42.0, "ly_occ": 31.0}, "Feb": {"act_rev": 22013, "act_adr": 46.0, "act_occ": 71.9, "bud_rev": 19066, "bud_adr": null, "bud_occ": null, "ly_rev": 19029, "ly_adr": 43.0, "ly_occ": 66.0}, "Mar": {"act_rev": 32580, "act_adr": 49.0, "act_occ": 90.1, "bud_rev": 38332, "bud_adr": null, "bud_occ": null, "ly_rev": 30058, "ly_adr": 52.0, "ly_occ": 75.0}, "Apr": {"act_rev": 53024, "act_adr": 75.0, "act_occ": 94.0, "bud_rev": 56925, "bud_adr": null, "bud_occ": null, "ly_rev": 49603, "ly_adr": 73.0, "ly_occ": 90.0}}, "Rest Restore Explore": {"Jan": {"act_rev": 4001, "act_adr": 39.0, "act_occ": 56.0, "bud_rev": null, "bud_adr": null, "bud_occ": null, "ly_rev": null, "ly_adr": null, "ly_occ": null}, "Feb": {"act_rev": 4216, "act_adr": 44.0, "act_occ": 56.9, "bud_rev": null, "bud_adr": null, "bud_occ": null, "ly_rev": null, "ly_adr": null, "ly_occ": null}, "Mar": {"act_rev": 7534, "act_adr": 50.0, "act_occ": 81.6, "bud_rev": null, "bud_adr": null, "bud_occ": null, "ly_rev": null, "ly_adr": null, "ly_occ": null}}, "Seashore Stays": {"Jan": {"act_rev": 5716, "act_adr": 79.0, "act_occ": 33.3, "bud_rev": 8187, "bud_adr": null, "bud_occ": null, "ly_rev": 7586, "ly_adr": 68.0, "ly_occ": 51.0}, "Feb": {"act_rev": 7569, "act_adr": 66.0, "act_occ": 54.7, "bud_rev": 7055, "bud_adr": null, "bud_occ": null, "ly_rev": 7417, "ly_adr": 64.0, "ly_occ": 59.0}, "Mar": {"act_rev": 13041, "act_adr": 75.0, "act_occ": 70.2, "bud_rev": 14185, "bud_adr": null, "bud_occ": null, "ly_rev": 10747, "ly_adr": 83.0, "ly_occ": 61.0}, "Apr": {"act_rev": 19286, "act_adr": 106.0, "act_occ": 75.8, "bud_rev": 21066, "bud_adr": null, "bud_occ": null, "ly_rev": 19090, "ly_adr": 113.0, "ly_occ": 81.0}}, "Seaview Stays": {"Jan": {"act_rev": 24531, "act_adr": 46.0, "act_occ": 68.3, "bud_rev": 25477, "bud_adr": null, "bud_occ": null, "ly_rev": 27267, "ly_adr": 46.0, "ly_occ": 73.0}, "Feb": {"act_rev": 25532, "act_adr": 49.0, "act_occ": 70.9, "bud_rev": 21955, "bud_adr": null, "bud_occ": null, "ly_rev": 29306, "ly_adr": 49.0, "ly_occ": 83.0}, "Mar": {"act_rev": 40089, "act_adr": 54.0, "act_occ": 91.8, "bud_rev": 44141, "bud_adr": null, "bud_occ": null, "ly_rev": 38368, "ly_adr": 58.0, "ly_occ": 84.0}, "Apr": {"act_rev": 56685, "act_adr": 80.0, "act_occ": 90.0, "bud_rev": 65552, "bud_adr": null, "bud_occ": null, "ly_rev": 58741, "ly_adr": 92.0, "ly_occ": 83.0}}, "Segond Boutique": {"Jan": {"act_rev": 27255, "act_adr": 69.0, "act_occ": 26.2, "bud_rev": 35759, "bud_adr": null, "bud_occ": null, "ly_rev": 0, "ly_adr": 0.0, "ly_occ": 0.0}, "Feb": {"act_rev": 36883, "act_adr": 83.0, "act_occ": 31.9, "bud_rev": 30815, "bud_adr": null, "bud_occ": null, "ly_rev": 12287, "ly_adr": 63.0, "ly_occ": 15.0}, "Mar": {"act_rev": 49917, "act_adr": 65.0, "act_occ": 52.1, "bud_rev": 61955, "bud_adr": null, "bud_occ": null, "ly_rev": 42696, "ly_adr": 57.0, "ly_occ": 53.0}, "Apr": {"act_rev": 83574, "act_adr": 71.0, "act_occ": 78.8, "bud_rev": 92006, "bud_adr": null, "bud_occ": null, "ly_rev": 67652, "ly_adr": 65.0, "ly_occ": 71.0}}, "South 32 Hotel": {"Jan": {"act_rev": 20633, "act_adr": 47.0, "act_occ": 51.5, "bud_rev": 20633, "bud_adr": null, "bud_occ": null, "ly_rev": null, "ly_adr": null, "ly_occ": null}, "Feb": {"act_rev": 26235, "act_adr": 51.0, "act_occ": 58.6, "bud_rev": 26235, "bud_adr": null, "bud_occ": null, "ly_rev": null, "ly_adr": null, "ly_occ": null}, "Mar": {"act_rev": 46849, "act_adr": 56.0, "act_occ": 84.5, "bud_rev": 46480, "bud_adr": null, "bud_occ": null, "ly_rev": null, "ly_adr": null, "ly_occ": null}, "Apr": {"act_rev": 71122, "act_adr": 78.0, "act_occ": 92.9, "bud_rev": 61000, "bud_adr": null, "bud_occ": null, "ly_rev": null, "ly_adr": null, "ly_occ": null}}, "Spinola Stays": {"Jan": {"act_rev": 21790, "act_adr": 56.0, "act_occ": 69.4, "bud_rev": 21071, "bud_adr": null, "bud_occ": null, "ly_rev": 17446, "ly_adr": 42.0, "ly_occ": 73.0}, "Feb": {"act_rev": 23906, "act_adr": 61.0, "act_occ": 78.0, "bud_rev": 18159, "bud_adr": null, "bud_occ": null, "ly_rev": 15637, "ly_adr": 41.0, "ly_occ": 75.0}, "Mar": {"act_rev": 38060, "act_adr": 75.0, "act_occ": 91.3, "bud_rev": 36508, "bud_adr": null, "bud_occ": null, "ly_rev": 29928, "ly_adr": 60.0, "ly_occ": 89.0}, "Apr": {"act_rev": 54106, "act_adr": 115.0, "act_occ": 88.0, "bud_rev": 54216, "bud_adr": null, "bud_occ": null, "ly_rev": 45269, "ly_adr": 91.0, "ly_occ": 92.0}}, "Stuart": {"Jan": {"act_rev": 18577, "act_adr": 48.0, "act_occ": 62.4, "bud_rev": 20930, "bud_adr": null, "bud_occ": null, "ly_rev": 13765, "ly_adr": 47.0, "ly_occ": 47.0}, "Feb": {"act_rev": 19923, "act_adr": 52.0, "act_occ": 67.8, "bud_rev": 18036, "bud_adr": null, "bud_occ": null, "ly_rev": 15394, "ly_adr": 46.0, "ly_occ": 59.0}, "Mar": {"act_rev": 32749, "act_adr": 63.0, "act_occ": 84.0, "bud_rev": 36262, "bud_adr": null, "bud_occ": null, "ly_rev": 28208, "ly_adr": 54.0, "ly_occ": 84.0}, "Apr": {"act_rev": 53196, "act_adr": 96.0, "act_occ": 91.1, "bud_rev": 53851, "bud_adr": null, "bud_occ": null, "ly_rev": 55640, "ly_adr": 95.0, "ly_occ": 97.0}}, "Ta Gianni": {"Jan": {"act_rev": 4001, "act_adr": 39.0, "act_occ": 56.0, "bud_rev": 4281, "bud_adr": null, "bud_occ": null, "ly_rev": 1521, "ly_adr": 44.0, "ly_occ": 19.0}, "Feb": {"act_rev": 4216, "act_adr": 44.0, "act_occ": 56.9, "bud_rev": 3689, "bud_adr": null, "bud_occ": null, "ly_rev": 2575, "ly_adr": 41.0, "ly_occ": 38.0}, "Mar": {"act_rev": 7534, "act_adr": 50.0, "act_occ": 81.6, "bud_rev": 7417, "bud_adr": null, "bud_occ": null, "ly_rev": 6415, "ly_adr": 45.0, "ly_occ": 77.0}, "Apr": {"act_rev": 12309, "act_adr": 76.0, "act_occ": 90.6, "bud_rev": 11014, "bud_adr": null, "bud_occ": null, "ly_rev": 10213, "ly_adr": 64.0, "ly_occ": 88.0}}, "Ta Guzzepi": {"Jan": {"act_rev": 4534, "act_adr": 54.0, "act_occ": 30.4, "bud_rev": 7915, "bud_adr": null, "bud_occ": null, "ly_rev": null, "ly_adr": null, "ly_occ": null}, "Feb": {"act_rev": 3943, "act_adr": 48.0, "act_occ": 32.0, "bud_rev": 6821, "bud_adr": null, "bud_occ": null, "ly_rev": null, "ly_adr": null, "ly_occ": null}, "Mar": {"act_rev": 9095, "act_adr": 58.0, "act_occ": 55.6, "bud_rev": 13714, "bud_adr": null, "bud_occ": null, "ly_rev": null, "ly_adr": null, "ly_occ": null}, "Apr": {"act_rev": 17525, "act_adr": 75.0, "act_occ": 86.2, "bud_rev": 20366, "bud_adr": null, "bud_occ": null, "ly_rev": null, "ly_adr": null, "ly_occ": null}}, "Yolanda Boutique": {"Jan": {"act_rev": 22088, "act_adr": 62.0, "act_occ": 84.1, "bud_rev": 15553, "bud_adr": null, "bud_occ": null, "ly_rev": null, "ly_adr": null, "ly_occ": null}, "Feb": {"act_rev": 19373, "act_adr": 62.0, "act_occ": 80.0, "bud_rev": 13403, "bud_adr": null, "bud_occ": null, "ly_rev": null, "ly_adr": null, "ly_occ": null}, "Mar": {"act_rev": 32871, "act_adr": 77.0, "act_occ": 97.9, "bud_rev": 26947, "bud_adr": null, "bud_occ": null, "ly_rev": null, "ly_adr": null, "ly_occ": null}, "Apr": {"act_rev": 45247, "act_adr": 113.0, "act_occ": 95.2, "bud_rev": 40018, "bud_adr": null, "bud_occ": null, "ly_rev": null, "ly_adr": null, "ly_occ": null}}};
-
-// Determine new units (no LYST across all months)
-function isNewUnit(unit) {
-  const months = DATA[unit];
-  return Object.values(months).every(m => m.ly_rev === null || m.ly_rev === 0);
-}
-
-function hasBudget(unit) {
-  return Object.values(DATA[unit]).some(m => m.bud_rev !== null);
-}
-
-function hasLYST(unit) {
-  return Object.values(DATA[unit]).some(m => m.ly_rev !== null && m.ly_rev > 0);
-}
-
-function fmtRev(v) {
-  if (v === null || v === undefined) return '—';
-  if (v >= 1000) return '€' + (v/1000).toFixed(1) + 'k';
-  return '€' + v;
-}
-
-function fmtPct(v) {
-  if (v === null || v === undefined) return '—';
-  return v.toFixed(1) + '%';
-}
-
-function varArrow(act, comp) {
-  if (comp === null || comp === 0) return '';
-  const pct = ((act - comp) / comp * 100);
-  const cls = pct >= 0 ? 'arrow-up' : 'arrow-dn';
-  const sym = pct >= 0 ? '▲' : '▼';
-  return `<span class="${cls}">${sym}${Math.abs(pct).toFixed(0)}%</span>`;
-}
-
-function varColor(act, comp) {
-  if (!comp || comp === 0) return '';
-  return act >= comp ? 'color:var(--green)' : 'color:var(--red)';
-}
-
-// Compute portfolio totals
-function computeSummary() {
-  let totAct=0, totBud=0, totLY=0;
-  let occActSum=0, occActN=0;
-  let adrActSum=0, adrActN=0;
-  for (const unit of Object.keys(DATA)) {
-    for (const m of MONTHS) {
-      if (!DATA[unit][m]) continue;
-      const d = DATA[unit][m];
-      totAct += d.act_rev || 0;
-      if (d.bud_rev) totBud += d.bud_rev;
-      if (d.ly_rev && d.ly_rev > 0) totLY += d.ly_rev;
-      if (d.act_occ) { occActSum += d.act_occ; occActN++; }
-      if (d.act_adr) { adrActSum += d.act_adr; adrActN++; }
-    }
-  }
-  return { totAct, totBud, totLY,
-    avgOcc: occActN ? occActSum/occActN : 0,
-    avgAdr: adrActN ? adrActSum/adrActN : 0
-  };
-}
-
-function buildSummary() {
-  const s = computeSummary();
-  const budVar = s.totBud ? ((s.totAct-s.totBud)/s.totBud*100) : null;
-  const lyVar  = s.totLY  ? ((s.totAct-s.totLY )/s.totLY *100) : null;
-
-  const cards = [
-    { label:'Total Revenue Jan–Apr', val:'€'+(s.totAct/1000).toFixed(0)+'k',
-      sub: (budVar!==null ? `<span class="${budVar>=0?'pos':'neg'}">${budVar>=0?'▲':'▼'}${Math.abs(budVar).toFixed(1)}% vs Budget</span>` : '') +
-           (lyVar!==null ? ` &nbsp; <span class="${lyVar>=0?'pos':'neg'}">${lyVar>=0?'▲':'▼'}${Math.abs(lyVar).toFixed(1)}% vs 2025</span>` : '') },
-    { label:'Portfolio Avg ADR', val:'€'+s.avgAdr.toFixed(0), sub:'Across all active units' },
-    { label:'Portfolio Avg Occupancy', val:s.avgOcc.toFixed(1)+'%', sub:'Jan–Apr 2026 average' },
-    { label:'Active Units', val:Object.keys(DATA).length, sub:Object.values(DATA).filter((_,i)=>isNewUnit(Object.keys(DATA)[i])).length+' new units (no LYST)' }
-  ];
-
-  const row = document.getElementById('summaryRow');
-  row.innerHTML = cards.map(c=>`
-    <div class="sum-card">
-      <div class="sum-label">${c.label}</div>
-      <div class="sum-val">${c.val}</div>
-      <div class="sum-sub">${c.sub}</div>
-    </div>
-  `).join('');
-}
-
-// Max revenue for bar scaling
-const maxRev = Math.max(...Object.values(DATA).flatMap(u=>
-  MONTHS.filter(m=>u[m]).flatMap(m=>[u[m].act_rev||0, u[m].bud_rev||0, u[m].ly_rev||0])
-));
-
-function buildCard(unit) {
-  const d = DATA[unit];
-  const newU = isNewUnit(unit);
-  const noBud = !hasBudget(unit);
-  const noLY  = !hasLYST(unit) && !newU;
-
-  // Compute totals
-  let totAct=0, totBud=0, totLY=0;
-  MONTHS.forEach(m=>{
-    if(!d[m]) return;
-    totAct += d[m].act_rev||0;
-    totBud += d[m].bud_rev||0;
-    totLY  += (d[m].ly_rev||0);
-  });
-  const budPct = totBud ? ((totAct-totBud)/totBud*100) : null;
-  const lyPct  = totLY  ? ((totAct-totLY )/totLY *100) : null;
-
-  // Badges
-  let badges = '';
-  if (newU)  badges += '<span class="badge badge-new">New Unit</span>';
-  if (noBud) badges += '<span class="badge badge-no-bud">No Budget</span>';
-  if (noLY && !newU) badges += '<span class="badge badge-no-ly">No LYST</span>';
-
-  // Revenue bars (total)
-  function barRow(tag, val, cls) {
-    if (!val) return '';
-    const w = Math.max(2, (val/maxRev*100));
-    return `<div class="bar-row">
-      <span class="bar-tag">${tag}</span>
-      <div class="bar-track"><div class="bar-fill ${cls}" data-width="${w}%" style="width:0%"></div></div>
-      <span class="bar-val">${fmtRev(val)}</span>
-    </div>`;
-  }
-
-  const revBars = `
-    <div class="bar-group">
-      ${barRow('ACT', totAct, 'bar-act')}
-      ${totBud ? barRow('BUD', totBud, 'bar-bud') : ''}
-      ${totLY  ? barRow('LY',  totLY,  'bar-ly')  : ''}
-    </div>
-    <div style="display:flex;gap:1rem;font-size:0.72rem;font-weight:300;flex-wrap:wrap;margin-top:0.2rem">
-      ${budPct!==null ? `<span style="${varColor(totAct,totBud)}">BUD: ${budPct>=0?'▲':'▼'}${Math.abs(budPct).toFixed(1)}%</span>` : '<span style="color:var(--muted)">No budget</span>'}
-      ${lyPct!==null  ? `<span style="${varColor(totAct,totLY)}">LYST: ${lyPct>=0?'▲':'▼'}${Math.abs(lyPct).toFixed(1)}%</span>` : '<span style="color:var(--muted)">No LYST</span>'}
-    </div>`;
-
-  // Month-by-month grid
-  const monthCols = MONTHS.map(m => {
-    if (!d[m]) return `<div class="month-col"><div class="month-name">${m}</div><div class="no-data">No data</div></div>`;
-    const md = d[m];
-
-    function metricBlock(lbl, act, bud, ly, fmt) {
-      const budComp = bud !== null ? `<div class="m-comp"><div class="ci ci-bud"></div>${fmt(bud)} ${varArrow(act,bud)}</div>` : '';
-      const lyComp  = (ly !== null && ly > 0) ? `<div class="m-comp"><div class="ci ci-ly"></div>${fmt(ly)} ${varArrow(act,ly)}</div>` : '';
-      return `<div class="metric-block">
-        <div class="m-label">${lbl}</div>
-        <div class="m-val" style="${varColor(act, bud||ly)}">${fmt(act)}</div>
-        <div class="m-comps">${budComp}${lyComp}</div>
-      </div>`;
-    }
-
-    return `<div class="month-col">
-      <div class="month-name">${m}</div>
-      ${metricBlock('REV', md.act_rev, md.bud_rev, md.ly_rev, fmtRev)}
-      ${metricBlock('OCC', md.act_occ, md.bud_occ, md.ly_occ, fmtPct)}
-      ${metricBlock('ADR', md.act_adr, md.bud_adr, md.ly_adr, v=>'€'+v)}
-    </div>`;
-  }).join('');
-
-  return `
-    <div class="unit-card${newU?' new-unit':''}" 
-         data-unit="${unit}"
-         data-above-budget="${budPct!==null && budPct>=0}"
-         data-below-budget="${budPct!==null && budPct<0}"
-         data-above-lyst="${lyPct!==null && lyPct>=0}"
-         data-below-lyst="${lyPct!==null && lyPct<0}"
-         data-new="${newU}">
-      <div class="card-head">
-        <div>
-          <div class="unit-name">${unit}</div>
-          <div class="unit-badges">${badges}</div>
-        </div>
-        <div style="text-align:right">
-          <div style="font-family:'DM Mono',monospace;font-size:0.6rem;color:var(--muted);letter-spacing:0.08em;text-transform:uppercase">Jan–Apr Total</div>
-          <div style="font-family:'Bebas Neue',sans-serif;font-size:1.6rem;line-height:1;letter-spacing:0.02em">${fmtRev(totAct)}</div>
+    card.innerHTML = `
+      <!-- Header: name + YTD total -->
+      <div class="pc-hdr">
+        <div class="pc-name">${prop}</div>
+        <div class="pc-ytd-block">
+          <div class="pc-ytd-label">${ytdRange}</div>
+          <div class="pc-ytd-val">${fCS(tR)}</div>
         </div>
       </div>
-      <div class="rev-section">
-        <div class="metric-label">Revenue comparison</div>
-        ${revBars}
+
+      <!-- Revenue comparison bars -->
+      <div class="pc-rev-section">
+        <div class="pc-rev-label">Revenue Comparison</div>
+        <div class="rev-bar-row">
+          <span class="rev-bar-tag">ACT</span>
+          <div class="rev-bar-track"><div class="rev-bar-fill fill-act" style="width:${barW(tR)}%"></div></div>
+          <span class="rev-bar-val">${fCS(tR)}</span>
+        </div>
+        ${tB > 0 ? `<div class="rev-bar-row">
+          <span class="rev-bar-tag">BUD</span>
+          <div class="rev-bar-track"><div class="rev-bar-fill fill-bud" style="width:${barW(tB)}%"></div></div>
+          <span class="rev-bar-val">${fCS(tB)}</span>
+        </div>` : ''}
+        ${tL > 0 ? `<div class="rev-bar-row">
+          <span class="rev-bar-tag">LY</span>
+          <div class="rev-bar-track"><div class="rev-bar-fill fill-ly" style="width:${barW(tL)}%"></div></div>
+          <span class="rev-bar-val">${fCS(tL)}</span>
+        </div>` : ''}
       </div>
-      <div class="metric-label" style="margin-bottom:0.5rem">Monthly detail · Revenue / Occupancy / ADR</div>
-      <div class="months-grid">${monthCols}</div>
-    </div>`;
+
+      <!-- Delta summary pills -->
+      <div class="pc-deltas">
+        ${bPct !== null ? `<div class="delta-item">
+          <span class="d-label">BUD:</span>
+          <span class="${bPct >= 0 ? 's-abv' : 's-blw'}">${bPct >= 0 ? '▲' : '▼'}${Math.abs(bPct).toFixed(1)}%</span>
+        </div>` : `<div class="delta-item"><span class="d-label">BUD:</span><span style="color:var(--text3);">—</span></div>`}
+        ${lPct !== null ? `<div class="delta-item">
+          <span class="d-label">LYST:</span>
+          <span class="${lPct >= 0 ? 's-abv' : 's-blw'}">${lPct >= 0 ? '▲' : '▼'}${Math.abs(lPct).toFixed(1)}%</span>
+        </div>` : `<div class="delta-item"><span class="d-label">LYST:</span><span class="s-new">NEW</span></div>`}
+      </div>
+
+      <!-- Monthly detail -->
+      <div class="pc-divider"></div>
+      <div class="pc-detail-label">MONTHLY DETAIL · REVENUE / OCCUPANCY / ADR</div>
+      <div class="mo-cols">${moColsHTML}</div>
+    `;
+    grid.appendChild(card);
+  }
+  applyFilter(currentFilter);
 }
 
-function buildGrid() {
-  const grid = document.getElementById('mainGrid');
-  grid.innerHTML = Object.keys(DATA).map(buildCard).join('');
-  // Animate bars
-  setTimeout(()=>{
-    document.querySelectorAll('.bar-fill[data-width]').forEach(el=>{
-      el.style.width = el.getAttribute('data-width');
-    });
-  }, 100);
-}
-
-function filterUnits(mode, btn) {
-  document.querySelectorAll('.ftab').forEach(b=>b.classList.remove('active'));
+// ─────────────────────────────────────────────────────────
+// FILTER
+// ─────────────────────────────────────────────────────────
+function setFilter(filter, btn) {
+  currentFilter = filter;
+  document.querySelectorAll('.fb').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
-  document.querySelectorAll('.unit-card').forEach(card=>{
-    let show = true;
-    if (mode === 'above-budget') show = card.dataset.aboveBudget === 'true';
-    else if (mode === 'below-budget') show = card.dataset.belowBudget === 'true';
-    else if (mode === 'above-lyst')   show = card.dataset.aboveLyst   === 'true';
-    else if (mode === 'below-lyst')   show = card.dataset.belowLyst   === 'true';
-    else if (mode === 'new')          show = card.dataset.new         === 'true';
+  applyFilter(filter);
+}
+function applyFilter(filter) {
+  document.querySelectorAll('.pc').forEach(card => {
+    const show = filter === 'all'           ? true
+               : filter === 'above-budget'  ? card.dataset.aboveBudget === '1'
+               : filter === 'below-budget'  ? card.dataset.belowBudget === '1'
+               : filter === 'above-lyst'    ? card.dataset.aboveLyst === '1'
+               : filter === 'below-lyst'    ? card.dataset.belowLyst === '1'
+               : filter === 'new'           ? card.dataset.isNew === '1'
+               : true;
     card.classList.toggle('hidden', !show);
   });
 }
 
-buildSummary();
-buildGrid();
+// ─────────────────────────────────────────────────────────
+// OTB
+// ─────────────────────────────────────────────────────────
+function renderOTB() { renderOTBKPIs(); renderAlerts(); renderOTBRows(); }
+
+function renderOTBKPIs() {
+  const { otbMonths, properties, propData } = dashData;
+  if (!otbMonths.length) return;
+
+  let totalOTB = 0, totalBgt = 0, totalLY = 0, unitsNeedingAttention = 0;
+  for (const prop of properties) {
+    const pd = propData[prop];
+    let pOTB = 0, pBgt = 0, pLY = 0;
+    for (const m of otbMonths) {
+      pOTB += pd[m].actual.rev;
+      pBgt += pd[m].budget.rev;
+      pLY  += pd[m].lyst.rev;
+    }
+    totalOTB += pOTB; totalBgt += pBgt; totalLY += pLY;
+    // Units needing attention = OTB occ < 30% in any month
+    for (const m of otbMonths) {
+      if (pd[m].actual.occ > 0 && pd[m].actual.occ < 0.30) { unitsNeedingAttention++; break; }
+    }
+  }
+  const gapToBgt = totalOTB - totalBgt;
+  const vsLY = totalLY > 0 ? (totalOTB - totalLY) / totalLY * 100 : null;
+  const yr = otbMonths[0]?.split(' ')[1] ?? '';
+  const rangeLabel = `${otbMonths[0]?.split(' ')[0]}–${otbMonths[otbMonths.length-1]?.split(' ')[0]}`;
+
+  document.getElementById('otb-kpi-bar').innerHTML = [
+    { lbl: `TOTAL OTB · ${rangeLabel}`,
+      val: fCS(totalOTB),
+      sub: `<span style="color:var(--text3);">Revenue on the books today</span>`,
+      valCls: '' },
+    { lbl: `BUDGET TARGET · ${rangeLabel}`,
+      val: fCS(totalBgt),
+      sub: totalBgt > 0
+        ? `<span class="${gapToBgt >= 0 ? 'up' : 'dn'}">${gapToBgt >= 0 ? '▲' : '▼'} ${fCS(Math.abs(gapToBgt))} ${gapToBgt >= 0 ? 'ahead' : 'gap to fill'}</span>`
+        : '<span style="color:var(--text3);">No budget data</span>',
+      valCls: '' },
+    { lbl: 'VS LYST PACE',
+      val: vsLY !== null ? `${vsLY >= 0 ? '▲' : '▼'} ${Math.abs(vsLY).toFixed(1)}%` : '—',
+      sub: `<span style="color:var(--text3);">vs same period ${parseInt(yr)-1} OTB</span>`,
+      valCls: vsLY === null ? '' : vsLY >= 0 ? 'up' : 'dn' },
+    { lbl: 'UNITS NEEDING ACTION',
+      val: unitsNeedingAttention,
+      sub: `<span style="color:var(--text3);">&lt;30% OTB occupancy</span>`,
+      valCls: unitsNeedingAttention > 0 ? 'dn' : 'up' }
+  ].map(k => `<div class="otb-kpi">
+    <div class="otb-kpi-lbl">${k.lbl}</div>
+    <div class="otb-kpi-val ${k.valCls}">${k.val}</div>
+    <div class="otb-kpi-sub">${k.sub}</div>
+  </div>`).join('');
+}
+
+function renderAlerts() {
+  const { otbMonths, properties, propData } = dashData;
+  const sec = document.getElementById('alert-section');
+
+  if (!otbMonths.length) {
+    sec.innerHTML = `<div class="otb-action-box" style="background:var(--gdim);border-color:var(--gbrd);margin-bottom:1rem;">
+      <div class="otb-action-hdr" style="color:var(--green);">✓ All months within YTD — no forward OTB</div>
+    </div>`;
+    return;
+  }
+
+  // Collect all gaps — every prop+month combination behind budget
+  const gaps = [];
+  for (const prop of properties) {
+    const pd = propData[prop];
+    for (const m of otbMonths) {
+      const { actual: { rev: otb, occ }, budget: { rev: bgt } } = pd[m];
+      if (bgt > 0 && otb < bgt) {
+        const gap = otb - bgt;
+        const occPct = occ > 0 ? Math.round(occ * 100) : 0;
+        gaps.push({ prop, month: m.split(' ')[0], otb, bgt, gap, occPct });
+      }
+    }
+  }
+  gaps.sort((a, b) => a.gap - b.gap); // worst first
+
+  if (!gaps.length) {
+    sec.innerHTML = `<div class="otb-action-box" style="background:var(--gdim);border-color:var(--gbrd);margin-bottom:1rem;">
+      <div class="otb-action-hdr" style="color:var(--green);">✓ All properties on track vs Budget</div>
+    </div>`;
+    return;
+  }
+
+  const tags = gaps.map(g =>
+    `<span class="otb-tag">${g.prop} · ${g.month} · ${g.occPct}% OTB · ${fCS(Math.abs(g.gap))} gap</span>`
+  ).join('');
+
+  sec.innerHTML = `<div class="otb-action-box" style="margin-bottom:1rem;">
+    <div class="otb-action-hdr">⚠ ACTION REQUIRED</div>
+    <div class="otb-action-tags">${tags}</div>
+  </div>`;
+}
+
+function renderOTBRows() {
+  const { otbMonths, properties, propData } = dashData;
+  const container = document.getElementById('otb-prop-rows');
+  container.innerHTML = '';
+  if (!otbMonths.length) return;
+
+  for (const prop of properties) {
+    const pd = propData[prop];
+
+    // Skip if no data at all
+    const hasAny = otbMonths.some(m => pd[m].actual.rev > 0 || pd[m].budget.rev > 0);
+    if (!hasAny) continue;
+
+    // Aggregate for sidebar
+    let tOTB = 0, tBgt = 0;
+    for (const m of otbMonths) { tOTB += pd[m].actual.rev; tBgt += pd[m].budget.rev; }
+    const totalGap = tOTB - tBgt;
+
+    // Month cells
+    const moCells = otbMonths.map(m => {
+      const { actual: a, budget: b, lyst: l } = pd[m];
+      const moName = m.split(' ')[0].toUpperCase();
+
+      // Occupancy pace bar colour: compare OTB occ vs LYST occ
+      const occAhead = l.occ > 0 ? a.occ >= l.occ : null;
+      const barColor = occAhead === null ? '#3B3B3B'
+                     : occAhead ? 'var(--green)' : 'var(--red)';
+      // Bar width: OTB occ as % of full bar (capped at 100)
+      const barW = a.occ > 0 ? Math.min(Math.round(a.occ * 100), 100) : 0;
+
+      // LYST reference bar width
+      const lyBarW = l.occ > 0 ? Math.min(Math.round(l.occ * 100), 100) : 0;
+      // Budget occ bar width
+      const budBarW = b.occ > 0 ? Math.min(Math.round(b.occ * 100), 100) : 0;
+
+      // OCC colour: green if at/above LYST, red if behind
+      const occCls = occAhead === null ? '' : occAhead ? 'up' : 'dn';
+
+      // Revenue deltas
+      const revVsBud = b.rev > 0 ? (a.rev - b.rev) / b.rev * 100 : null;
+      const revVsLY  = l.rev > 0 ? (a.rev - l.rev)  / l.rev  * 100 : null;
+
+      // Gap to budget
+      const gapToBud = b.rev > 0 ? a.rev - b.rev : null;
+
+      return `<div class="otb-mo-cell">
+        <div class="otb-mo-name">${moName}</div>
+        <!-- Pace bar: OTB occ coloured, with thin LY and budget markers -->
+        <div style="position:relative;height:3px;background:var(--bg4);border-radius:2px;margin-bottom:8px;">
+          <div style="position:absolute;left:0;top:0;height:100%;width:${barW}%;background:${barColor};border-radius:2px;"></div>
+          ${lyBarW > 0 ? `<div style="position:absolute;left:${lyBarW}%;top:-1px;width:2px;height:5px;background:#3B82F6;border-radius:1px;"></div>` : ''}
+          ${budBarW > 0 ? `<div style="position:absolute;left:${budBarW}%;top:-1px;width:2px;height:5px;background:var(--gold);border-radius:1px;"></div>` : ''}
+        </div>
+
+        <div class="otb-mo-rev">${a.rev > 0 ? fCS(a.rev) : '—'}</div>
+        <div class="otb-mo-occ ${occCls}">${a.occ > 0 ? (a.occ * 100).toFixed(1) + '%' : '—'}</div>
+        <div class="otb-mo-adr">ADR ${a.adr > 0 ? '€' + Math.round(a.adr) : '—'}</div>
+
+        <div class="otb-mo-refs">
+          ${b.rev > 0 ? `<div class="otb-mo-ref-row">
+            <div class="otb-mo-ref-dot" style="background:var(--gold);"></div>
+            <span class="otb-mo-ref-val">${fCS(b.rev)}</span>
+            ${revVsBud !== null ? `<span class="otb-mo-ref-delta ${revVsBud >= 0 ? 'up' : 'dn'}">${revVsBud >= 0 ? '▲' : '▼'}${Math.abs(revVsBud).toFixed(0)}%</span>` : ''}
+          </div>` : ''}
+          ${l.rev > 0 ? `<div class="otb-mo-ref-row">
+            <div class="otb-mo-ref-dot" style="background:#3B82F6;"></div>
+            <span class="otb-mo-ref-val">${fCS(l.rev)}</span>
+            ${revVsLY !== null ? `<span class="otb-mo-ref-delta ${revVsLY >= 0 ? 'up' : 'dn'}">${revVsLY >= 0 ? '▲' : '▼'}${Math.abs(revVsLY).toFixed(0)}%</span>` : ''}
+          </div>` : ''}
+        </div>
+
+        ${gapToBud !== null ? `
+          <div class="otb-mo-gap-lbl">GAP TO BUD</div>
+          <div class="otb-mo-gap-val ${gapToBud >= 0 ? 'up' : 'dn'}">${gapToBud >= 0 ? '+' : ''}${fCS(gapToBud)}</div>
+        ` : ''}
+      </div>`;
+    }).join('');
+
+    const row = document.createElement('div');
+    row.className = 'otb-prop-row';
+    row.innerHTML = `
+      <div class="otb-prop-info">
+        <div class="otb-prop-name">${prop}</div>
+        <div class="otb-prop-total-lbl">OTB total:</div>
+        <div class="otb-prop-total">${fCS(tOTB)}</div>
+        ${tBgt > 0 ? `<div class="otb-prop-gap ${totalGap >= 0 ? 'up' : 'dn'}">
+          ${totalGap >= 0 ? '▲' : '▼'} ${fCS(Math.abs(totalGap))} ${totalGap >= 0 ? 'ahead' : 'behind budget'}
+        </div>` : ''}
+      </div>
+      <div class="otb-mo-cells">${moCells}</div>
+    `;
+    container.appendChild(row);
+  }
+}
+
+// ─────────────────────────────────────────────────────────
+// UTILS
+// ─────────────────────────────────────────────────────────
+function fC(v)  { if (v === null || isNaN(v)) return '—'; const a = Math.abs(v), s = v < 0 ? '-' : ''; return s + '€' + Math.round(a).toLocaleString(); }
+function fCS(v) { if (v === null || isNaN(v)) return '—'; const a = Math.abs(v), s = v < 0 ? '-' : ''; return a >= 1e6 ? s + '€' + (a / 1e6).toFixed(1) + 'M' : a >= 1000 ? s + '€' + (a / 1000).toFixed(1) + 'k' : s + '€' + Math.round(a); }
+function sg(v)  { return v >= 0 ? '+' : ''; }
 </script>
 </body>
 </html>

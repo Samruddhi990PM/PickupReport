@@ -250,13 +250,13 @@ footer strong{color:var(--gold)}
 <div id="upload-screen">
   <div class="upload-hero">
     <h1>Revenue <em>Dashboard</em></h1>
-    <p>Upload your PriceLabs or PMS bookings export to instantly generate a fully interactive revenue intelligence dashboard.</p>
+    <p>Upload your Hostfully, PriceLabs, or PMS bookings export to instantly generate a fully interactive revenue intelligence dashboard.</p>
   </div>
   <div class="upload-zone" id="upload-zone">
     <input type="file" id="file-input" accept=".csv,.xls,.xlsx">
     <span class="upload-icon">📂</span>
     <h3>Drop your bookings file here</h3>
-    <p>Drag & drop, or click to browse. Supports PriceLabs, Guesty, Hostaway, Lodgify, and other PMS exports.</p>
+    <p>Drag & drop, or click to browse. Supports Hostfully, PriceLabs, Guesty, Hostaway, Lodgify, and other PMS exports.</p>
     <div class="upload-formats">
       <span class="fmt-badge">.CSV</span>
       <span class="fmt-badge">.XLS</span>
@@ -357,6 +357,7 @@ footer strong{color:var(--gold)}
       <div class="search-bar">
         <input type="text" id="res-search" placeholder="Search by property, group, city, channel, ID…">
         <select id="res-group-filter"><option value="">All Groups</option></select>
+        <select id="res-subgroup-filter"><option value="">All Sub-Groups</option></select>
         <select id="res-month-filter"><option value="">All Months</option></select>
         <select id="res-source-filter"><option value="">All Channels</option></select>
         <select id="res-status-filter"><option value="">All Statuses</option></select>
@@ -375,38 +376,266 @@ footer strong{color:var(--gold)}
 <script>
 // ════════════════════════════════════════════════════════
 //  COLUMN DETECTION CONFIG
-//  Maps dashboard field → list of possible header names
-//  (case-insensitive, partial match)
+//  Hostfully / PriceLabs exact headers listed first,
+//  then generic fallbacks for other PMS exports.
 // ════════════════════════════════════════════════════════
 const FIELD_ALIASES = {
-  listing:    ['listing name','listing','property name','unit name','rental name','accommodation','title'],
-  checkin:    ['check-in date','check in date','checkin date','check-in','arrival','start date','check in','arrival date'],
-  checkout:   ['check-out date','check out date','checkout date','check-out','departure','end date','check out','departure date'],
-  booked_date:['booked date','booking date','reservation date','created date','created at','date booked','booking created'],
-  adr:        ['average daily rate','adr','avg daily rate','avg. daily rate','average rate','nightly rate','price per night','daily rate'],
-  rental_rev: ['rental revenue','rental rev','revenue','rent revenue','rental income','net revenue','gross revenue','booking revenue','income'],
-  total_rev:  ['total revenue','total rev','gross total','total income','total charge','total amount'],
-  currency:   ['currency','curr','currency code'],
-  source:     ['booking source','source','channel','booking channel','platform','ota','origin'],
-  status:     ['booking status','status','reservation status','booking state'],
-  los:        ['length of stay','length of stay (days)','los','nights','duration','stay duration','number of nights'],
-  book_win:   ['booking window','booking window (days)','lead time','days advance','advance booking'],
-  res_id:     ['reservation id','booking id','res id','reservation number','booking number','confirmation number','reference'],
-  group:      ['group','property group','segment','portfolio','category','accommodation type','room type group'],
-  city:       ['city','location','city/town','municipality','region','area','market'],
-  bedrooms:   ['br count','bedrooms','bedroom count','beds','bed count','number of bedrooms','br'],
+  // ── Core booking fields ──────────────────────────────
+  listing: [
+    'listing name',           // Hostfully exact
+    'listing',
+    'property name',
+    'pms property name',      // Hostfully "PMS Property Name" column
+    'unit name',
+    'rental name',
+    'accommodation',
+    'title',
+    'name',
+  ],
+  checkin: [
+    'check-in date',          // Hostfully exact
+    'check in date',
+    'checkin date',
+    'check-in',
+    'arrival date',
+    'arrival',
+    'start date',
+    'check in',
+  ],
+  checkout: [
+    'check-out date',         // Hostfully exact
+    'check out date',
+    'checkout date',
+    'check-out',
+    'departure date',
+    'departure',
+    'end date',
+    'check out',
+  ],
+  booked_date: [
+    'booked date',            // Hostfully exact
+    'booking date',
+    'reservation date',
+    'created date',
+    'created at',
+    'date booked',
+    'booking created',
+  ],
+
+  // ── Revenue fields ───────────────────────────────────
+  adr: [
+    'average daily rate',     // Hostfully exact
+    'avg daily rate',
+    'avg. daily rate',
+    'adr',
+    'average rate',
+    'nightly rate',
+    'price per night',
+    'daily rate',
+  ],
+  rental_rev: [
+    'rental revenue',         // Hostfully exact
+    'rental rev',
+    'revenue',
+    'rent revenue',
+    'rental income',
+    'net revenue',
+    'gross revenue',
+    'booking revenue',
+    'income',
+  ],
+  total_rev: [
+    'total revenue',          // Hostfully exact
+    'total rev',
+    'gross total',
+    'total income',
+    'total charge',
+    'total amount',
+  ],
+  currency: [
+    'currency',               // Hostfully exact
+    'curr',
+    'currency code',
+  ],
+
+  // ── Booking meta ─────────────────────────────────────
+  source: [
+    'booking source',         // Hostfully exact
+    'source',
+    'channel',
+    'booking channel',
+    'platform',
+    'ota',
+    'origin',
+  ],
+  status: [
+    'booking status',         // Hostfully exact
+    'status',
+    'reservation status',
+    'booking state',
+  ],
+  los: [
+    'length of stay (days)',  // Hostfully exact
+    'length of stay',
+    'los',
+    'nights',
+    'duration',
+    'stay duration',
+    'number of nights',
+  ],
+  book_win: [
+    'booking window (days)',  // Hostfully exact
+    'booking window',
+    'lead time',
+    'days advance',
+    'advance booking',
+  ],
+  res_id: [
+    'reservation id',         // Hostfully exact
+    'booking id',
+    'res id',
+    'reservation number',
+    'booking number',
+    'confirmation number',
+    'reference',
+  ],
+  listing_id: [
+    'listing id',             // Hostfully exact
+    'unit id',                // Hostfully "Unit ID" column
+    'property id',
+    'listing_id',
+    'unit_id',
+  ],
+
+  // ── Property meta ─────────────────────────────────────
+  group: [
+    'group',                  // Hostfully exact
+    'property group',
+    'segment',
+    'portfolio',
+    'category',
+    'accommodation type',
+    'room type group',
+  ],
+  sub_group: [
+    'sub-group',              // Hostfully exact
+    'sub group',
+    'subgroup',
+    'sub_group',
+    'sub-segment',
+  ],
+  tags: [
+    'tags',                   // Hostfully exact
+    'tag',
+    'labels',
+  ],
+  city: [
+    'city',                   // Hostfully exact
+    'location',
+    'city/town',
+    'municipality',
+    'region',
+    'area',
+    'market',
+  ],
+  bedrooms: [
+    'br count',               // Hostfully exact
+    'bedrooms',
+    'bedroom count',
+    'beds',
+    'bed count',
+    'number of bedrooms',
+    'br',
+  ],
+  sync_price: [
+    'sync price',             // Hostfully exact
+    'price sync',
+    'dynamic pricing',
+    'pricelabs sync',
+  ],
+  pms: [
+    'pms property name',      // Hostfully exact second reference
+    'pms',
+    'property management system',
+    'pms name',
+  ],
 };
 
 const REQUIRED_FIELDS = ['listing','checkin','checkout','rental_rev','status'];
 const CH_COLORS = ['#D4A840','#3D5A80','#1A6B72','#2E3D55','#5B8DB8','#7B9EC8','#9DB5D8','#BCC8DA','#CCD6E0'];
 
 // ════════════════════════════════════════════════════════
+//  DATE PARSER — handles "23 Apr 2025" (Hostfully format)
+//  plus ISO, DD/MM/YYYY, MM/DD/YYYY, Excel serial numbers
+// ════════════════════════════════════════════════════════
+const MONTH_NAMES = {
+  jan:0,feb:1,mar:2,apr:3,may:4,jun:5,
+  jul:6,aug:7,sep:8,oct:9,nov:10,dec:11,
+};
+
+function parseDate(val) {
+  if (!val) return null;
+  if (val instanceof Date) return isNaN(val) ? null : val;
+  // Excel serial number
+  if (typeof val === 'number') {
+    const d = new Date(Math.round((val - 25569) * 86400 * 1000));
+    return isNaN(d) ? null : d;
+  }
+  const str = String(val).trim();
+  if (!str) return null;
+
+  // "23 Apr 2025" or "23 April 2025" — Hostfully format
+  const dmy_word = str.match(/^(\d{1,2})\s+([A-Za-z]{3,9})\s+(\d{4})$/);
+  if (dmy_word) {
+    const mon = MONTH_NAMES[dmy_word[2].toLowerCase().slice(0,3)];
+    if (mon !== undefined) return new Date(+dmy_word[3], mon, +dmy_word[1]);
+  }
+  // "Apr 23 2025" or "April 23, 2025"
+  const mdy_word = str.match(/^([A-Za-z]{3,9})\s+(\d{1,2}),?\s+(\d{4})$/);
+  if (mdy_word) {
+    const mon = MONTH_NAMES[mdy_word[1].toLowerCase().slice(0,3)];
+    if (mon !== undefined) return new Date(+mdy_word[3], mon, +mdy_word[2]);
+  }
+  // ISO: yyyy-mm-dd or yyyy/mm/dd
+  const iso = str.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
+  if (iso) return new Date(+iso[1], +iso[2]-1, +iso[3]);
+  // dd/mm/yyyy or mm/dd/yyyy
+  const dmy = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+  if (dmy) {
+    if (+dmy[1] > 12) return new Date(+dmy[3], +dmy[2]-1, +dmy[1]);
+    return new Date(+dmy[3], +dmy[1]-1, +dmy[2]);
+  }
+  const d = new Date(str);
+  return isNaN(d) ? null : d;
+}
+
+// ════════════════════════════════════════════════════════
+//  CURRENCY CLEANER
+//  Strips Arabic/Unicode currency symbols: "د.إ. 296.00" → 296
+// ════════════════════════════════════════════════════════
+function cleanNum(val) {
+  if (typeof val === 'number') return val;
+  if (!val) return 0;
+  // Remove everything that is not digit, dot, minus, or comma
+  // Also handle thousands separators (commas): "9,693.80" → 9693.80
+  const s = String(val)
+    .replace(/[^\d.,\-]/g, '')   // strip non-numeric chars (incl. currency symbols)
+    .replace(/,(?=\d{3}(?:[.,]|$))/g, ''); // strip thousands commas
+  // If multiple dots remain (edge case), keep last one
+  const dotIdx = s.lastIndexOf('.');
+  const clean = dotIdx !== -1
+    ? s.slice(0, dotIdx).replace(/\./g, '') + '.' + s.slice(dotIdx+1)
+    : s.replace(/\./g, '');
+  return clean ? parseFloat(clean) : 0;
+}
+
+// ════════════════════════════════════════════════════════
 //  STATE
 // ════════════════════════════════════════════════════════
-let RAW_ROWS = [];       // raw parsed rows (array of objects)
-let HEADERS  = [];       // original headers from file
-let COL_MAP  = {};       // field → original header
-let D        = {};       // processed dashboard data
+let RAW_ROWS = [];
+let HEADERS  = [];
+let COL_MAP  = {};
+let D        = {};
 let filteredRes = [];
 
 // ════════════════════════════════════════════════════════
@@ -455,7 +684,6 @@ function parseCSV(text, filename) {
       const rows = XLSX.utils.sheet_to_json(ws, {defval:''});
       processRows(rows, filename);
     } catch(e) {
-      // fallback manual CSV parse
       const lines = text.split(/\r?\n/).filter(l => l.trim());
       const headers = splitCSVLine(lines[0]);
       const rows = lines.slice(1).map(line => {
@@ -472,9 +700,10 @@ function parseCSV(text, filename) {
 function parseExcel(buf, filename) {
   updateOverlay('Parsing spreadsheet…');
   setTimeout(() => {
-    const wb = XLSX.read(buf, {type:'array', cellDates:true});
+    // raw:false keeps values as formatted strings (preserves "23 Apr 2025")
+    const wb = XLSX.read(buf, {type:'array', cellDates:false, raw:false});
     const ws = wb.Sheets[wb.SheetNames[0]];
-    const rows = XLSX.utils.sheet_to_json(ws, {defval:'', raw:false, dateNF:'yyyy-mm-dd'});
+    const rows = XLSX.utils.sheet_to_json(ws, {defval:'', raw:false});
     processRows(rows, filename);
   }, 50);
 }
@@ -497,20 +726,20 @@ function detectColumns(rows) {
   if (!rows.length) throw new Error('File appears to be empty.');
   HEADERS = Object.keys(rows[0]);
   COL_MAP = {};
-
   const headersLower = HEADERS.map(h => h.toLowerCase().trim());
 
   for (const [field, aliases] of Object.entries(FIELD_ALIASES)) {
-    // exact match first
     let found = null;
+    // 1. Exact match (case-insensitive)
     for (const alias of aliases) {
-      const idx = headersLower.findIndex(h => h === alias);
+      const idx = headersLower.findIndex(h => h === alias.toLowerCase());
       if (idx !== -1) { found = HEADERS[idx]; break; }
     }
-    // partial match fallback
+    // 2. Contains match
     if (!found) {
       for (const alias of aliases) {
-        const idx = headersLower.findIndex(h => h.includes(alias) || alias.includes(h));
+        const al = alias.toLowerCase();
+        const idx = headersLower.findIndex(h => h.includes(al) || al.includes(h));
         if (idx !== -1) { found = HEADERS[idx]; break; }
       }
     }
@@ -523,13 +752,12 @@ function missingRequired() {
 }
 
 // ════════════════════════════════════════════════════════
-//  PROCESS ROWS → dashboard data
+//  PROCESS ROWS
 // ════════════════════════════════════════════════════════
 function processRows(rows, filename) {
   updateOverlay('Detecting columns…');
   RAW_ROWS = rows;
   detectColumns(rows);
-
   const missing = missingRequired();
   if (missing.length > 0) {
     hideOverlay();
@@ -551,7 +779,7 @@ function buildDashboard(filename) {
       renderDashboard();
     } catch(e) {
       hideOverlay();
-      showError('Error building dashboard: ' + e.message);
+      showError('Error building dashboard: ' + e.message + '\n' + e.stack);
     }
   }, 80);
 }
@@ -564,88 +792,105 @@ function get(row, field) {
   return col ? (row[col] ?? '') : '';
 }
 
-function parseDate(val) {
-  if (!val) return null;
-  if (val instanceof Date) return val;
-  // Excel serial number
-  if (typeof val === 'number') {
-    const d = new Date(Math.round((val - 25569) * 86400 * 1000));
-    if (!isNaN(d)) return d;
-  }
-  const str = String(val).trim();
-  // try ISO yyyy-mm-dd
-  const iso = str.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
-  if (iso) return new Date(+iso[1], +iso[2]-1, +iso[3]);
-  // try dd/mm/yyyy or mm/dd/yyyy
-  const dmy = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
-  if (dmy) {
-    const a = new Date(+dmy[3], +dmy[1]-1, +dmy[2]);
-    const b = new Date(+dmy[3], +dmy[2]-1, +dmy[1]);
-    // pick whichever is a valid date with sane month
-    if (+dmy[1] > 12) return b;
-    return a;
-  }
-  const d = new Date(str);
-  return isNaN(d) ? null : d;
-}
-
 function fmtMonth(date) {
   if (!date) return 'Unknown';
   return date.getFullYear() + '-' + String(date.getMonth()+1).padStart(2,'0');
 }
 
-function cleanNum(val) {
-  if (typeof val === 'number') return val;
-  const s = String(val).replace(/[^0-9.\-]/g,'');
-  return s ? parseFloat(s) : 0;
+// Normalise Hostfully channel names to friendly display names
+function cleanSource(raw) {
+  const s = String(raw||'').trim();
+  if (!s) return 'Unknown';
+  const map = {
+    'HOSTFULLY_UI':      'Hostfully (Direct)',
+    'DIRECT_AIRBNB':     'Airbnb',
+    'AIRBNB':            'Airbnb',
+    'DIRECT_VRBO':       'VRBO',
+    'VRBO':              'VRBO',
+    'DIRECT_BOOKING_COM':'Booking.com',
+    'BOOKING_COM':       'Booking.com',
+    'DIRECT_EXPEDIA':    'Expedia',
+    'EXPEDIA':           'Expedia',
+    'HOMEAWAY':          'HomeAway',
+    'TRIPADVISOR':       'TripAdvisor',
+    'DIRECT':            'Direct',
+    'OWNER':             'Owner / Block',
+    'MANUAL':            'Manual Entry',
+  };
+  return map[s.toUpperCase()] || s;
 }
 
 function normalizeRows(rows) {
   return rows.map(row => {
-    const checkin  = parseDate(get(row,'checkin'));
-    const checkout = parseDate(get(row,'checkout'));
+    const checkin    = parseDate(get(row,'checkin'));
+    const checkout   = parseDate(get(row,'checkout'));
     const bookedDate = parseDate(get(row,'booked_date'));
-    const losRaw   = cleanNum(get(row,'los'));
+
+    // LOS — prefer explicit column, compute from dates as fallback
+    const losRaw = cleanNum(get(row,'los'));
     const los = losRaw > 0 ? losRaw :
                 (checkin && checkout ? Math.max(1, Math.round((checkout - checkin)/(1000*60*60*24))) : 1);
 
-    // booking window
+    // Booking window — prefer explicit column, compute as fallback
     let bookWin = cleanNum(get(row,'book_win'));
+    if (!bookWin && COL_MAP['book_win']) bookWin = 0;
     if (!COL_MAP['book_win'] && checkin && bookedDate) {
       bookWin = Math.round((checkin - bookedDate)/(1000*60*60*24));
     }
 
+    // Revenue
     const rev    = cleanNum(get(row,'rental_rev'));
     const adrRaw = cleanNum(get(row,'adr'));
     const adr    = adrRaw > 0 ? adrRaw : (los > 0 ? rev/los : 0);
 
+    // Currency — extract symbol from revenue field if currency column missing
+    let currency = String(get(row,'currency')||'').trim();
+    if (!currency) {
+      const rawRev = String(get(row,'rental_rev')||'');
+      // pull any leading non-numeric chars as currency hint
+      const symMatch = rawRev.match(/^([^\d\s]{1,6})/);
+      if (symMatch) currency = symMatch[1].trim();
+    }
+    if (!currency) currency = '—';
+
+    // Listing name — Hostfully often uses "Listing Name" which may differ from "PMS Property Name"
     const listingRaw = String(get(row,'listing')||'').trim();
     const cleanProp  = listingRaw.includes(' -- ') ? listingRaw.split(' -- ')[0].trim() : listingRaw;
 
     const status = String(get(row,'status')||'Booked').trim();
 
+    // Group — prefer "Group" column; fall back to "Sub-Group" if that's all we have
+    const groupRaw    = String(get(row,'group')||'').trim();
+    const subGroupRaw = String(get(row,'sub_group')||'').trim();
+    const group = groupRaw || subGroupRaw || '(Unassigned)';
+
     return {
-      listing:     listingRaw,
-      clean_prop:  cleanProp || 'Unknown Property',
+      listing:      listingRaw,
+      clean_prop:   cleanProp || 'Unknown Property',
       checkin,
       checkout,
-      booked_date: bookedDate,
+      booked_date:  bookedDate,
       checkin_month: fmtMonth(checkin),
       adr,
-      rental_rev:  rev,
-      total_rev:   cleanNum(get(row,'total_rev')) || rev,
-      currency:    String(get(row,'currency')||'').trim() || '—',
-      source:      String(get(row,'source')||'Unknown').trim() || 'Unknown',
+      rental_rev:   rev,
+      total_rev:    cleanNum(get(row,'total_rev')) || rev,
+      currency,
+      source:       cleanSource(get(row,'source')),
       status,
       is_cancelled: /cancel/i.test(status),
       los,
-      book_win:    bookWin,
-      res_id:      String(get(row,'res_id')||'').trim(),
-      group:       String(get(row,'group')||'(Unassigned)').trim() || '(Unassigned)',
-      city:        String(get(row,'city')||'').trim(),
-      bedrooms:    cleanNum(get(row,'bedrooms')) || 1,
+      book_win:     bookWin,
+      res_id:       String(get(row,'res_id')||'').trim(),
+      listing_id:   String(get(row,'listing_id')||'').trim(),
+      group,
+      sub_group:    subGroupRaw,
+      tags:         String(get(row,'tags')||'').trim(),
+      city:         String(get(row,'city')||'').trim(),
+      bedrooms:     cleanNum(get(row,'bedrooms')) || 1,
+      sync_price:   String(get(row,'sync_price')||'').trim(),
+      pms:          String(get(row,'pms')||'').trim(),
     };
-  }).filter(r => r.checkin || r.rental_rev > 0); // drop blank rows
+  }).filter(r => r.checkin || r.rental_rev > 0);
 }
 
 // ════════════════════════════════════════════════════════
@@ -659,12 +904,12 @@ function pivot(records, keyFn) {
     map[k].Revenue      += r.rental_rev;
     map[k].RoomNights   += r.los;
     map[k].Reservations += 1;
-    if (r.adr > 0)  map[k]._adrs.push(r.adr);
+    if (r.adr > 0) map[k]._adrs.push(r.adr);
     map[k]._loss.push(r.los);
   });
   return Object.values(map).map(g => {
-    g.ADR = g._adrs.length ? g._adrs.reduce((a,b)=>a+b,0)/g._adrs.length : 0;
-    g.LOS = g._loss.length ? g._loss.reduce((a,b)=>a+b,0)/g._loss.length : 0;
+    g.ADR      = g._adrs.length ? g._adrs.reduce((a,b)=>a+b,0)/g._adrs.length : 0;
+    g.LOS      = g._loss.length ? g._loss.reduce((a,b)=>a+b,0)/g._loss.length : 0;
     g.RevPerRN = g.RoomNights > 0 ? g.Revenue/g.RoomNights : 0;
     return g;
   }).sort((a,b) => b.Revenue - a.Revenue);
@@ -680,22 +925,25 @@ function aggregate(records) {
     return arr;
   }
 
-  const monthly   = addShare(pivot(booked, r => r.checkin_month).sort((a,b)=>a.key.localeCompare(b.key)));
-  const channel   = addShare(pivot(booked, r => r.source));
-  const groups    = addShare(pivot(booked, r => r.group));
-  const props     = addShare(pivot(booked, r => r.clean_prop+'|||'+r.group));
-  const grpProps  = addShare(pivot(booked, r => r.group+'|||'+r.clean_prop));
+  const monthly  = addShare(pivot(booked, r => r.checkin_month).sort((a,b)=>a.key.localeCompare(b.key)));
+  const channel  = addShare(pivot(booked, r => r.source));
+  const groups   = addShare(pivot(booked, r => r.group));
+  const props    = addShare(pivot(booked, r => r.clean_prop+'|||'+r.group));
+  const grpProps = addShare(pivot(booked, r => r.group+'|||'+r.clean_prop));
 
-  // map group back
-  props.forEach(p => { const parts=p.key.split('|||'); p.prop=parts[0]; p.group=parts[1]||'(Unassigned)'; });
-  grpProps.forEach(p => { const parts=p.key.split('|||'); p.group=parts[0]; p.prop=parts[1]; });
+  props.forEach(p   => { const pts=p.key.split('|||'); p.prop=pts[0]; p.group=pts[1]||'(Unassigned)'; });
+  grpProps.forEach(p => { const pts=p.key.split('|||'); p.group=pts[0]; p.prop=pts[1]; });
 
-  // cancellation aggregates
   const cancTotalRev = cancelled.reduce((s,r)=>s+r.rental_rev,0);
   const cancGroups   = pivot(cancelled, r => r.group);
   const cancProps    = pivot(cancelled, r => r.group+'|||'+r.clean_prop);
-  cancGroups.forEach(g=>g.RiskPct=cancTotalRev>0?g.Revenue/cancTotalRev*100:0);
-  cancProps.forEach(p=>{const pts=p.key.split('|||');p.group=pts[0];p.prop=pts[1];});
+  cancGroups.forEach(g => g.RiskPct = cancTotalRev>0 ? g.Revenue/cancTotalRev*100 : 0);
+  cancProps.forEach(p  => { const pts=p.key.split('|||'); p.group=pts[0]; p.prop=pts[1]; });
+
+  // Sub-group pivot (extra layer for Hostfully data)
+  const subGroups = addShare(pivot(booked, r => r.sub_group || r.group));
+
+  const bookWinSamples = booked.filter(r=>r.book_win>0);
 
   return {
     booked, cancelled, records,
@@ -705,13 +953,14 @@ function aggregate(records) {
       avg_adr:    booked.length ? booked.reduce((s,r)=>s+r.adr,0)/booked.length : 0,
       avg_los:    booked.length ? booked.reduce((s,r)=>s+r.los,0)/booked.length : 0,
       n_res:      booked.length,
-      avg_win:    booked.filter(r=>r.book_win>0).length ?
-                  booked.filter(r=>r.book_win>0).reduce((s,r)=>s+r.book_win,0)/booked.filter(r=>r.book_win>0).length : 0,
+      avg_win:    bookWinSamples.length
+                  ? bookWinSamples.reduce((s,r)=>s+r.book_win,0)/bookWinSamples.length
+                  : 0,
       n_canc:     cancelled.length,
     },
-    monthly, channel, groups, props, grpProps,
+    monthly, channel, groups, props, grpProps, subGroups,
     cancGroups, cancProps,
-    currencies: [...new Set(booked.map(r=>r.currency).filter(Boolean))],
+    currencies: [...new Set(booked.map(r=>r.currency).filter(c=>c&&c!=='—'))],
   };
 }
 
@@ -723,39 +972,28 @@ function openMapper(missingFields, filename) {
   _mapperFilename = filename;
   const body = document.getElementById('mapper-body');
   body.innerHTML = '';
-
-  // show all mappable fields, highlight missing required
   Object.entries(FIELD_ALIASES).forEach(([field, aliases]) => {
     const isRequired = REQUIRED_FIELDS.includes(field);
     const isMissing  = missingFields.includes(field);
     const current    = COL_MAP[field] || '';
-
     const label = field.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
     const sub   = aliases.slice(0,3).join(', ') + '…';
-
-    const opts = HEADERS.map(h =>
+    const opts  = HEADERS.map(h =>
       `<option value="${h}" ${h===current?'selected':''}>${h}</option>`
     ).join('');
-
     body.innerHTML += `<div class="mapper-row">
       <div>
         <div class="mapper-label">${label}${isRequired?'<span class="required-dot">*</span>':''}</div>
         <div class="mapper-sub">${sub}</div>
       </div>
       <select class="mapper-select" data-field="${field}" style="${isMissing?'border-color:var(--red)':''}">
-        <option value="">(skip)</option>
-        ${opts}
+        <option value="">(skip)</option>${opts}
       </select>
     </div>`;
   });
-
   document.getElementById('mapper-modal').classList.add('active');
 }
-
-function cancelMapper() {
-  document.getElementById('mapper-modal').classList.remove('active');
-}
-
+function cancelMapper() { document.getElementById('mapper-modal').classList.remove('active'); }
 function confirmMapper() {
   document.querySelectorAll('.mapper-select').forEach(sel => {
     const field = sel.dataset.field;
@@ -763,34 +1001,29 @@ function confirmMapper() {
     else delete COL_MAP[field];
   });
   const missing = missingRequired();
-  if (missing.length) {
-    showError('Required fields still missing: ' + missing.join(', '));
-    return;
-  }
+  if (missing.length) { showError('Required fields still missing: ' + missing.join(', ')); return; }
   document.getElementById('mapper-modal').classList.remove('active');
   showOverlay('Building dashboard…');
   setTimeout(() => buildDashboard(_mapperFilename), 50);
 }
 
 // ════════════════════════════════════════════════════════
-//  RENDER DASHBOARD
+//  RENDER
 // ════════════════════════════════════════════════════════
-const fmt   = n => (n==null||isNaN(n)) ? '—' : Math.round(n).toLocaleString('en-CA');
-const fmtd  = n => (n==null||isNaN(n)) ? '—' : (+n).toLocaleString('en-CA',{minimumFractionDigits:2,maximumFractionDigits:2});
-const fmtp  = n => (n==null||isNaN(n)) ? '—' : n.toFixed(1)+'%';
+const fmt  = n => (n==null||isNaN(n)) ? '—' : Math.round(n).toLocaleString('en-CA');
+const fmtd = n => (n==null||isNaN(n)) ? '—' : (+n).toLocaleString('en-CA',{minimumFractionDigits:2,maximumFractionDigits:2});
+const fmtp = n => (n==null||isNaN(n)) ? '—' : n.toFixed(1)+'%';
+// Show currency symbol (from data) before numeric amount
 const curr  = () => D.currencies?.[0] || '';
+const fmtAmt = n => `${curr()} ${fmtd(n)}`.trim();
+const fmtInt = n => `${curr()} ${fmt(n)}`.trim();
 
 function renderDashboard() {
-  // Header meta
   const meta = `Source: ${D.filename} · Generated: ${D.generatedAt} · ${D.kpis.n_res} bookings · ${D.kpis.n_canc} cancellations`;
-  document.getElementById('header-meta').textContent = meta;
-  document.getElementById('footer-meta').textContent = meta + ' · Confidential — Internal Use Only';
-  document.getElementById('nav-meta').textContent = D.filename;
-
-  // Enable nav tabs
+  document.getElementById('header-meta').textContent  = meta;
+  document.getElementById('footer-meta').textContent  = meta + ' · Confidential — Internal Use Only';
+  document.getElementById('nav-meta').textContent     = D.filename;
   document.querySelectorAll('.nav-tabs a').forEach(a => a.classList.remove('disabled'));
-
-  // Show first tab
   document.querySelectorAll('.nav-tabs a')[0].classList.add('active');
   document.querySelectorAll('.page')[0].classList.add('active');
 
@@ -806,27 +1039,23 @@ function renderDashboard() {
   renderCancellations();
   renderReservations();
 
-  // Animate bars after paint
-  document.getElementById('upload-screen').style.display = 'none';
+  document.getElementById('upload-screen').style.display  = 'none';
   document.getElementById('dashboard-wrapper').style.display = 'block';
   setTimeout(() => {
-    document.querySelectorAll('.bar-fill[data-w]').forEach(el => {
-      el.style.width = el.dataset.w + '%';
-    });
+    document.querySelectorAll('.bar-fill[data-w]').forEach(el => { el.style.width = el.dataset.w + '%'; });
   }, 200);
 }
 
-// ── KPIs ──────────────────────────────────────────────────────────────────────
+// ── KPIs ──
 function renderKPIs() {
   const k = D.kpis;
-  const c = curr();
   const kpis = [
-    {label:'TOTAL REVENUE',  value:`${c} ${fmt(k.total_rev)}`, sub:'Rental revenue, all bookings'},
-    {label:'ROOM NIGHTS',    value:fmt(k.total_rn),              sub:'Total LOS across portfolio'},
-    {label:'RESERVATIONS',   value:k.n_res,                       sub:`+ ${k.n_canc} cancellations`},
-    {label:'AVG ADR',        value:`${c} ${fmtd(k.avg_adr)}`,   sub:'Average daily rate'},
-    {label:'AVG LOS',        value:k.avg_los.toFixed(1)+' nights', sub:'Average length of stay'},
-    {label:'AVG BOOK WINDOW',value:k.avg_win > 0 ? Math.round(k.avg_win)+' days' : '—', sub:'Days from booking to check-in'},
+    {label:'TOTAL REVENUE',   value:fmtInt(k.total_rev),                        sub:'Rental revenue, all bookings'},
+    {label:'ROOM NIGHTS',     value:fmt(k.total_rn),                             sub:'Total LOS across portfolio'},
+    {label:'RESERVATIONS',    value:k.n_res,                                     sub:`+ ${k.n_canc} cancellations`},
+    {label:'AVG ADR',         value:fmtAmt(k.avg_adr),                           sub:'Average daily rate'},
+    {label:'AVG LOS',         value:k.avg_los.toFixed(1)+' nights',              sub:'Average length of stay'},
+    {label:'AVG BOOK WINDOW', value:k.avg_win>0 ? Math.round(k.avg_win)+' days':'—', sub:'Days from booking to check-in'},
   ];
   const grid = document.getElementById('kpi-grid');
   grid.innerHTML = '';
@@ -839,7 +1068,7 @@ function renderKPIs() {
   });
 }
 
-// ── BAR CHART ─────────────────────────────────────────────────────────────────
+// ── BAR CHART ──
 function renderMonthlyChart() {
   const el = document.getElementById('monthly-chart');
   el.innerHTML = '';
@@ -852,13 +1081,13 @@ function renderMonthlyChart() {
     el.innerHTML += `<div class="bar-row">
       <div class="bar-label">${m.key.replace(/^\d{4}-/,'')}</div>
       <div class="bar-track"><div class="bar-fill ${cls}" style="width:0%" data-w="${pct}">
-        <span class="bar-val">${curr()} ${fmt(m.Revenue)}</span>
+        <span class="bar-val">${fmtInt(m.Revenue)}</span>
       </div></div>
     </div>`;
   });
 }
 
-// ── DONUT ─────────────────────────────────────────────────────────────────────
+// ── DONUT ──
 function renderDonut() {
   const svg = document.getElementById('donut-svg');
   const leg = document.getElementById('donut-legend');
@@ -869,10 +1098,9 @@ function renderDonut() {
   const otherRev = D.channel.slice(8).reduce((s,c)=>s+c.Revenue,0);
   const totalRev = D.kpis.total_rev || 1;
   if (otherRev > 0) top8.push({key:'Other',Revenue:otherRev,RevShare:otherRev/totalRev*100});
-
   top8.forEach((ch,i) => {
     const angle = (ch.RevShare/100)*2*Math.PI;
-    const end   = start+angle;
+    const end = start+angle;
     const x1=cx+r*Math.cos(start),y1=cy+r*Math.sin(start);
     const x2=cx+r*Math.cos(end),  y2=cy+r*Math.sin(end);
     const ix1=cx+inner*Math.cos(start),iy1=cy+inner*Math.sin(start);
@@ -900,7 +1128,7 @@ function renderDonut() {
   t2.textContent='bookings'; svg.appendChild(t2);
 }
 
-// ── MONTHLY TABLE ─────────────────────────────────────────────────────────────
+// ── MONTHLY TABLE ──
 function renderMonthlyTable() {
   const tbody = document.getElementById('monthly-tbody');
   tbody.innerHTML='';
@@ -910,22 +1138,23 @@ function renderMonthlyTable() {
     const bg = i%2===0?'style="background:#F0F7FB"':'';
     tbody.innerHTML+=`<tr ${bg}>
       <td>${m.key}</td>
-      <td class="num">${curr()} ${fmt(m.Revenue)}</td>
+      <td class="num">${fmtInt(m.Revenue)}</td>
       <td class="num">${fmt(m.RoomNights)}</td>
       <td class="num">${m.Reservations}</td>
-      <td class="num">${curr()} ${fmtd(m.ADR)}</td>
+      <td class="num">${fmtAmt(m.ADR)}</td>
       <td class="num">${m.LOS.toFixed(1)}</td>
-      <td class="num">${curr()} ${fmtd(m.RevPerRN)}</td>
+      <td class="num">${fmtAmt(m.RevPerRN)}</td>
       <td class="num"><div class="share-bar"><div class="share-track"><div class="share-fill gold" style="width:${m.RevShare}%"></div></div>${fmtp(m.RevShare)}</div></td>
     </tr>`;
   });
   document.getElementById('monthly-tfoot').innerHTML=`
     <td>TOTAL / AVG</td>
-    <td class="num">${curr()} ${fmt(tRev)}</td><td class="num">${fmt(tRN)}</td><td class="num">${tRes}</td>
-    <td class="num">—</td><td class="num">—</td><td class="num">${curr()} ${fmtd(tRev/tRN)}</td><td class="num">100.0%</td>`;
+    <td class="num">${fmtInt(tRev)}</td><td class="num">${fmt(tRN)}</td><td class="num">${tRes}</td>
+    <td class="num">—</td><td class="num">—</td>
+    <td class="num">${tRN>0?fmtAmt(tRev/tRN):'—'}</td><td class="num">100.0%</td>`;
 }
 
-// ── CHANNEL TABLE ─────────────────────────────────────────────────────────────
+// ── CHANNEL TABLE ──
 function renderChannelTable() {
   const tbody = document.getElementById('channel-tbody');
   tbody.innerHTML='';
@@ -935,41 +1164,40 @@ function renderChannelTable() {
     const bg = i%2===0?'style="background:#F0F7FB"':'';
     tbody.innerHTML+=`<tr ${bg}>
       <td>${c.key}</td>
-      <td class="num">${curr()} ${fmt(c.Revenue)}</td>
+      <td class="num">${fmtInt(c.Revenue)}</td>
       <td class="num">${fmt(c.RoomNights)}</td>
       <td class="num">${c.Reservations}</td>
-      <td class="num">${curr()} ${fmtd(c.ADR)}</td>
+      <td class="num">${fmtAmt(c.ADR)}</td>
       <td class="num">${c.LOS.toFixed(1)}</td>
       <td class="num"><div class="share-bar"><div class="share-track"><div class="share-fill" style="width:${c.RevShare}%"></div></div>${fmtp(c.RevShare)}</div></td>
     </tr>`;
   });
   document.getElementById('channel-tfoot').innerHTML=`
     <td>TOTAL / AVG</td>
-    <td class="num">${curr()} ${fmt(tRev)}</td><td class="num">${fmt(tRN)}</td><td class="num">${tRes}</td>
+    <td class="num">${fmtInt(tRev)}</td><td class="num">${fmt(tRN)}</td><td class="num">${tRes}</td>
     <td class="num">—</td><td class="num">—</td><td class="num">100.0%</td>`;
 }
 
-// ── INSIGHTS ──────────────────────────────────────────────────────────────────
+// ── INSIGHTS ──
 function renderInsights() {
   const k = D.kpis;
   const topCh = D.channel[0];
   const topProp = D.props[0];
   const lastMinute = D.booked.filter(r=>r.book_win>=0&&r.book_win<=7).length;
   const cancRate = D.records.length ? (k.n_canc/D.records.length*100).toFixed(1) : 0;
-
   const notes = [
     ['🎯 CHANNEL DEPENDENCY',
      topCh ? `${topCh.key} = ${fmtp(topCh.RevShare)} of revenue (${topCh.Reservations} reservations). ${topCh.RevShare>40?'High OTA concentration — consider activating direct booking channel to protect net margin.':'Channel mix looks reasonable. Continue monitoring share trends weekly.'}` : 'Insufficient channel data.'],
     ['📅 LEAD TIME & PRICING',
      k.avg_win>0 ? `Avg booking window = ${Math.round(k.avg_win)} days. ${lastMinute} last-minute bookings (≤7 days) detected — consider dynamic last-minute rate premiums to capture demand without discounting.` : 'Booking window data not available in this file.'],
     ['📐 LOS OPTIMIZATION',
-     `Avg LOS = ${k.avg_los.toFixed(1)} nights. ${k.avg_los<2?'Short average stay — model 2-night minimums for peak weekends to reduce cleaning cost per revenue dollar.':'LOS is healthy. Monitor LOS by month to identify seasonal short-stay patterns that may compress occupancy.'}` ],
+     `Avg LOS = ${k.avg_los.toFixed(1)} nights. ${k.avg_los<2?'Short average stay — model 2-night minimums for peak weekends to reduce cleaning cost per revenue dollar.':'LOS is healthy. Monitor LOS by month to identify seasonal short-stay patterns that may compress occupancy.'}`],
     ['💰 TOP REVENUE PROPERTY',
-     topProp ? `${topProp.prop} leads with ${curr()} ${fmt(topProp.Revenue)} revenue (${fmtp(topProp.RevShare)} of portfolio). ADR ${curr()} ${fmtd(topProp.ADR)} · ${topProp.Reservations} reservations. Use this property's pricing as a benchmark floor for similar-tier units.` : 'No property data.'],
+     topProp ? `${topProp.prop} leads with ${fmtInt(topProp.Revenue)} revenue (${fmtp(topProp.RevShare)} of portfolio). ADR ${fmtAmt(topProp.ADR)} · ${topProp.Reservations} reservations. Use this property's pricing as a benchmark floor for similar-tier units.` : 'No property data.'],
     ['❌ CANCELLATION RATE',
-     `${cancRate}% cancellation rate (${k.n_canc} of ${D.records.length} total reservations). ${+cancRate>10?'Above industry benchmark of 8–10%. Review cancellation policy and OTA terms — stricter policies or non-refundable rate tiers can reduce exposure.':'Within normal range. Continue monitoring for month-over-month trends.'}` ],
+     `${cancRate}% cancellation rate (${k.n_canc} of ${D.records.length} total reservations). ${+cancRate>10?'Above industry benchmark of 8–10%. Review cancellation policy and OTA terms — stricter policies or non-refundable rate tiers can reduce exposure.':'Within normal range. Continue monitoring for month-over-month trends.'}`],
     ['🔄 HOW TO REFRESH',
-     'This dashboard is a self-contained HTML file. To update it with new data: open the file in any browser and use the "Load New File" button in the top-right to upload your latest PMS or PriceLabs export. All charts and tables will regenerate instantly.'],
+     'This dashboard is a self-contained HTML file. To update it with new data: open the file in any browser and use the "Load New File" button in the top-right to upload your latest Hostfully or PriceLabs export. All charts and tables will regenerate instantly.'],
   ];
   const el = document.getElementById('insights');
   el.innerHTML='';
@@ -981,7 +1209,7 @@ function renderInsights() {
   });
 }
 
-// ── GROUP TABLE ───────────────────────────────────────────────────────────────
+// ── GROUP TABLE ──
 function renderGroupTable() {
   const tbody = document.getElementById('group-tbody');
   tbody.innerHTML='';
@@ -991,22 +1219,22 @@ function renderGroupTable() {
     const bg=i%2===0?'style="background:#F0F7FB"':'';
     tbody.innerHTML+=`<tr ${bg}>
       <td>${g.key}</td>
-      <td class="num">${curr()} ${fmt(g.Revenue)}</td>
+      <td class="num">${fmtInt(g.Revenue)}</td>
       <td class="num">${fmt(g.RoomNights)}</td>
       <td class="num">${g.Reservations}</td>
-      <td class="num">${curr()} ${fmtd(g.ADR)}</td>
+      <td class="num">${fmtAmt(g.ADR)}</td>
       <td class="num">${g.LOS.toFixed(1)}</td>
-      <td class="num">${curr()} ${fmtd(g.RevPerRN)}</td>
+      <td class="num">${fmtAmt(g.RevPerRN)}</td>
       <td class="num"><div class="share-bar"><div class="share-track"><div class="share-fill gold" style="width:${g.RevShare}%"></div></div>${fmtp(g.RevShare)}</div></td>
     </tr>`;
   });
   document.getElementById('group-tfoot').innerHTML=`
     <td>PORTFOLIO TOTAL</td>
-    <td class="num">${curr()} ${fmt(tR)}</td><td class="num">${fmt(tN)}</td><td class="num">${tRes}</td>
+    <td class="num">${fmtInt(tR)}</td><td class="num">${fmt(tN)}</td><td class="num">${tRes}</td>
     <td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">100.0%</td>`;
 }
 
-// ── DRILLDOWN TABLE ───────────────────────────────────────────────────────────
+// ── DRILLDOWN TABLE ──
 function renderDrilldown() {
   const tbody = document.getElementById('drilldown-tbody');
   tbody.innerHTML='';
@@ -1018,18 +1246,18 @@ function renderDrilldown() {
       const g = grpMap[p.group]||{Revenue:0,RoomNights:0,Reservations:0,ADR:0,LOS:0,RevPerRN:0,RevShare:0};
       tbody.innerHTML+=`<tr class="group-hdr">
         <td>▸ ${p.group}</td>
-        <td class="num">${curr()} ${fmt(g.Revenue)}</td><td class="num">${fmt(g.RoomNights)}</td><td class="num">${g.Reservations}</td>
-        <td class="num">${curr()} ${fmtd(g.ADR)}</td><td class="num">${g.LOS.toFixed(1)}</td>
-        <td class="num">${curr()} ${fmtd(g.RevPerRN)}</td><td class="num">${fmtp(g.RevShare)}</td>
+        <td class="num">${fmtInt(g.Revenue)}</td><td class="num">${fmt(g.RoomNights)}</td><td class="num">${g.Reservations}</td>
+        <td class="num">${fmtAmt(g.ADR)}</td><td class="num">${g.LOS.toFixed(1)}</td>
+        <td class="num">${fmtAmt(g.RevPerRN)}</td><td class="num">${fmtp(g.RevShare)}</td>
       </tr>`;
       prevGrp=p.group;
     }
     const bg=rc%2===0?'style="background:#F0F7FB"':'';
     tbody.innerHTML+=`<tr ${bg}>
       <td class="prop-indent">↳ ${p.prop}</td>
-      <td class="num">${curr()} ${fmt(p.Revenue)}</td><td class="num">${fmt(p.RoomNights)}</td><td class="num">${p.Reservations}</td>
-      <td class="num">${curr()} ${fmtd(p.ADR)}</td><td class="num">${p.LOS.toFixed(1)}</td>
-      <td class="num">${curr()} ${fmtd(p.RevPerRN)}</td>
+      <td class="num">${fmtInt(p.Revenue)}</td><td class="num">${fmt(p.RoomNights)}</td><td class="num">${p.Reservations}</td>
+      <td class="num">${fmtAmt(p.ADR)}</td><td class="num">${p.LOS.toFixed(1)}</td>
+      <td class="num">${fmtAmt(p.RevPerRN)}</td>
       <td class="num"><div class="share-bar"><div class="share-track"><div class="share-fill" style="width:${Math.min(p.RevShare*3,100)}%"></div></div>${fmtp(p.RevShare)}</div></td>
     </tr>`;
     rc++;
@@ -1038,11 +1266,11 @@ function renderDrilldown() {
   D.grpProps.forEach(p=>{tR+=p.Revenue;tN+=p.RoomNights;tRes+=p.Reservations;});
   document.getElementById('drilldown-tfoot').innerHTML=`
     <td>PORTFOLIO TOTAL</td>
-    <td class="num">${curr()} ${fmt(tR)}</td><td class="num">${fmt(tN)}</td><td class="num">${tRes}</td>
+    <td class="num">${fmtInt(tR)}</td><td class="num">${fmt(tN)}</td><td class="num">${tRes}</td>
     <td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">100.0%</td>`;
 }
 
-// ── PROPERTIES TABLE ──────────────────────────────────────────────────────────
+// ── PROPERTIES TABLE ──
 function renderPropTable() {
   const tbody = document.getElementById('prop-tbody');
   tbody.innerHTML='';
@@ -1055,21 +1283,20 @@ function renderPropTable() {
     tbody.innerHTML+=`<tr ${bg}>
       <td>${rank}${p.prop}</td>
       <td class="dim">${p.group}</td>
-      <td class="num">${curr()} ${fmt(p.Revenue)}</td>
+      <td class="num">${fmtInt(p.Revenue)}</td>
       <td class="num">${fmt(p.RoomNights)}</td>
       <td class="num">${p.Reservations}</td>
-      <td class="num">${curr()} ${fmtd(p.ADR)}</td>
+      <td class="num">${fmtAmt(p.ADR)}</td>
       <td class="num">${p.LOS.toFixed(1)}</td>
-      <td class="num">${curr()} ${fmtd(p.RevPerRN)}</td>
+      <td class="num">${fmtAmt(p.RevPerRN)}</td>
       <td class="num"><div class="share-bar"><div class="share-track"><div class="share-fill gold" style="width:${Math.min(p.RevShare*5,100)}%"></div></div>${fmtp(p.RevShare)}</div></td>
     </tr>`;
   });
   document.getElementById('prop-tfoot').innerHTML=`
     <td>TOTAL (${D.props.length} Properties)</td><td>—</td>
-    <td class="num">${curr()} ${fmt(tR)}</td><td class="num">${fmt(tN)}</td><td class="num">${tRes}</td>
+    <td class="num">${fmtInt(tR)}</td><td class="num">${fmt(tN)}</td><td class="num">${tRes}</td>
     <td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">100.0%</td>`;
 
-  // prop cancellations
   const propCancEl = document.getElementById('prop-canc-container');
   propCancEl.innerHTML = '';
   if (D.cancProps.length === 0) {
@@ -1077,7 +1304,7 @@ function renderPropTable() {
       <div class="no-canc-icon">✅</div>
       <div class="no-canc-text">
         <h3>No Property-Level Cancellations</h3>
-        <p>Zero cancellations detected across all properties in this extract. This table will populate automatically when cancellation rows are present.</p>
+        <p>Zero cancellations detected across all properties in this extract.</p>
       </div>
     </div>`;
   } else {
@@ -1088,14 +1315,14 @@ function renderPropTable() {
       </tr></thead>
       <tbody>${D.cancProps.map((p,i)=>`<tr ${i%2===0?'style="background:#F0F7FB"':''}>
         <td class="dim">${p.group}</td><td>${p.prop}</td>
-        <td class="num">${curr()} ${fmt(p.Revenue)}</td><td class="num">${fmt(p.RoomNights)}</td><td class="num">${p.Reservations}</td>
-        <td class="num">${curr()} ${fmtd(p.ADR)}</td><td class="num">${p.LOS.toFixed(1)}</td>
+        <td class="num">${fmtInt(p.Revenue)}</td><td class="num">${fmt(p.RoomNights)}</td><td class="num">${p.Reservations}</td>
+        <td class="num">${fmtAmt(p.ADR)}</td><td class="num">${p.LOS.toFixed(1)}</td>
       </tr>`).join('')}</tbody>
     </table></div>`;
   }
 }
 
-// ── CANCELLATIONS PAGE ────────────────────────────────────────────────────────
+// ── CANCELLATIONS PAGE ──
 function renderCancellations() {
   const el = document.getElementById('canc-content');
   if (D.cancelled.length === 0) {
@@ -1103,33 +1330,33 @@ function renderCancellations() {
       <div class="no-canc-icon" style="font-size:48px">🟢</div>
       <div class="no-canc-text">
         <h3 style="font-size:20px">Zero Cancellations This Period</h3>
-        <p style="font-size:13px">No cancellation records found in the uploaded file. A 0% cancellation rate is a strong indicator of demand confidence and effective rate strategy.<br><br>
+        <p style="font-size:13px">No cancellation records found in the uploaded file.<br><br>
         <span style="font-size:11px;color:var(--rule)">Active stay months: ${[...new Set(D.booked.map(r=>r.checkin_month))].sort().join(' · ')}</span></p>
       </div>
     </div>`;
     return;
   }
-  // By group
   const grpHtml = D.cancGroups.map((g,i)=>`<tr ${i%2===0?'style="background:#F0F7FB"':''}>
     <td>${g.key}</td>
-    <td class="num">${curr()} ${fmt(g.Revenue)}</td><td class="num">${fmt(g.RoomNights)}</td><td class="num">${g.Reservations}</td>
-    <td class="num">${curr()} ${fmtd(g.ADR)}</td><td class="num">${g.LOS.toFixed(1)}</td>
+    <td class="num">${fmtInt(g.Revenue)}</td><td class="num">${fmt(g.RoomNights)}</td><td class="num">${g.Reservations}</td>
+    <td class="num">${fmtAmt(g.ADR)}</td><td class="num">${g.LOS.toFixed(1)}</td>
     <td><span class="badge canc">At Risk</span></td>
   </tr>`).join('');
-
-  // By property
   const propHtml = D.cancProps.map((p,i)=>`<tr ${i%2===0?'style="background:#F0F7FB"':''}>
     <td class="dim">${p.group}</td><td>${p.prop}</td>
-    <td class="num">${curr()} ${fmt(p.Revenue)}</td><td class="num">${fmt(p.RoomNights)}</td><td class="num">${p.Reservations}</td>
-    <td class="num">${curr()} ${fmtd(p.ADR)}</td><td class="num">${p.LOS.toFixed(1)}</td>
+    <td class="num">${fmtInt(p.Revenue)}</td><td class="num">${fmt(p.RoomNights)}</td><td class="num">${p.Reservations}</td>
+    <td class="num">${fmtAmt(p.ADR)}</td><td class="num">${p.LOS.toFixed(1)}</td>
   </tr>`).join('');
-
   el.innerHTML=`
     <div class="section-label" style="margin-top:0"><h2>By Property Group</h2><div class="pill red">Group Level</div><div class="divider"></div></div>
     <div class="table-wrap scroll-x" style="margin-bottom:28px"><table>
       <thead><tr><th>Group</th><th class="num">Revenue at Risk</th><th class="num">RN Lost</th><th class="num">Cancelled Res.</th><th class="num">Avg ADR</th><th class="num">Avg LOS</th><th>Risk</th></tr></thead>
       <tbody>${grpHtml}</tbody>
-      <tfoot><tr><td>TOTAL</td><td class="num">${curr()} ${fmt(D.cancGroups.reduce((s,g)=>s+g.Revenue,0))}</td><td class="num">${fmt(D.cancGroups.reduce((s,g)=>s+g.RoomNights,0))}</td><td class="num">${D.cancGroups.reduce((s,g)=>s+g.Reservations,0)}</td><td class="num">—</td><td class="num">—</td><td>—</td></tr></tfoot>
+      <tfoot><tr><td>TOTAL</td>
+        <td class="num">${fmtInt(D.cancGroups.reduce((s,g)=>s+g.Revenue,0))}</td>
+        <td class="num">${fmt(D.cancGroups.reduce((s,g)=>s+g.RoomNights,0))}</td>
+        <td class="num">${D.cancGroups.reduce((s,g)=>s+g.Reservations,0)}</td>
+        <td class="num">—</td><td class="num">—</td><td>—</td></tr></tfoot>
     </table></div>
     <div class="section-label"><h2>By Individual Property</h2><div class="pill red">Property Level</div><div class="divider"></div></div>
     <div class="table-wrap scroll-x"><table>
@@ -1138,67 +1365,99 @@ function renderCancellations() {
     </table></div>`;
 }
 
-// ── RESERVATIONS TABLE ────────────────────────────────────────────────────────
+// ── RESERVATIONS TABLE ──
 function renderReservations() {
-  // Build thead
   const hasCols = {
-    res_id:   !!COL_MAP['res_id'],
-    city:     !!COL_MAP['city'],
-    booked:   !!COL_MAP['booked_date'],
-    book_win: !!COL_MAP['book_win'] || true, // always computed
-    bedrooms: !!COL_MAP['bedrooms'],
+    res_id:     !!COL_MAP['res_id'],
+    listing_id: !!COL_MAP['listing_id'],
+    city:       !!COL_MAP['city'],
+    booked:     !!COL_MAP['booked_date'],
+    sub_group:  !!COL_MAP['sub_group'],
+    tags:       !!COL_MAP['tags'],
+    bedrooms:   !!COL_MAP['bedrooms'],
+    sync_price: !!COL_MAP['sync_price'],
+    pms:        !!COL_MAP['pms'],
+    total_rev:  !!COL_MAP['total_rev'],
   };
 
   const theadRow = document.getElementById('res-thead-row');
+  const numCols = new Set(['ADR','Revenue','Total Rev','LOS','Win','Beds']);
   const cols = [
-    ...(hasCols.res_id ? ['Res. ID'] : []),
-    'Group','Property',
-    ...(hasCols.city ? ['City'] : []),
+    ...(hasCols.res_id     ? ['Res. ID']      : []),
+    'Group',
+    ...(hasCols.sub_group  ? ['Sub-Group']    : []),
+    'Property',
+    ...(hasCols.city       ? ['City']         : []),
     'Check-in','Check-out',
-    ...(hasCols.booked ? ['Booked'] : []),
-    'LOS','Win','ADR','Revenue','Currency','Channel',
-    ...(hasCols.bedrooms ? ['Beds'] : []),
-    'Status','Stay Month'
+    ...(hasCols.booked     ? ['Booked']       : []),
+    'LOS','Win','ADR','Revenue',
+    ...(hasCols.total_rev  ? ['Total Rev']    : []),
+    'Currency','Channel',
+    ...(hasCols.bedrooms   ? ['Beds']         : []),
+    ...(hasCols.sync_price ? ['Sync Price']   : []),
+    ...(hasCols.pms        ? ['PMS']          : []),
+    ...(hasCols.tags       ? ['Tags']         : []),
+    'Status','Stay Month',
   ];
-  theadRow.innerHTML = cols.map((c,i) =>
-    `<th class="${['ADR','Revenue','LOS','Win','Beds'].includes(c)?'num':''}">${c}</th>`
+  theadRow.innerHTML = cols.map(c =>
+    `<th class="${numCols.has(c)?'num':''}">${c}</th>`
   ).join('');
 
   // Populate filters
-  const groups  = [...new Set(D.records.map(r=>r.group))].sort();
-  const months  = [...new Set(D.records.map(r=>r.checkin_month))].sort();
-  const sources = [...new Set(D.records.map(r=>r.source))].sort();
-  const statuses= [...new Set(D.records.map(r=>r.status))].sort();
-  const gf=document.getElementById('res-group-filter');
-  const mf=document.getElementById('res-month-filter');
-  const sf=document.getElementById('res-source-filter');
-  const stf=document.getElementById('res-status-filter');
-  gf.innerHTML='<option value="">All Groups</option>'+groups.map(g=>`<option>${g}</option>`).join('');
-  mf.innerHTML='<option value="">All Months</option>'+months.map(m=>`<option>${m}</option>`).join('');
-  sf.innerHTML='<option value="">All Channels</option>'+sources.map(s=>`<option>${s}</option>`).join('');
-  stf.innerHTML='<option value="">All Statuses</option>'+statuses.map(s=>`<option>${s}</option>`).join('');
+  const groups    = [...new Set(D.records.map(r=>r.group))].sort();
+  const subgroups = [...new Set(D.records.map(r=>r.sub_group).filter(Boolean))].sort();
+  const months    = [...new Set(D.records.map(r=>r.checkin_month))].sort();
+  const sources   = [...new Set(D.records.map(r=>r.source))].sort();
+  const statuses  = [...new Set(D.records.map(r=>r.status))].sort();
+
+  document.getElementById('res-group-filter').innerHTML =
+    '<option value="">All Groups</option>' + groups.map(g=>`<option>${g}</option>`).join('');
+
+  const sgf = document.getElementById('res-subgroup-filter');
+  if (hasCols.sub_group && subgroups.length) {
+    sgf.style.display='';
+    sgf.innerHTML='<option value="">All Sub-Groups</option>'+subgroups.map(s=>`<option>${s}</option>`).join('');
+  } else {
+    sgf.style.display='none';
+  }
+
+  document.getElementById('res-month-filter').innerHTML =
+    '<option value="">All Months</option>' + months.map(m=>`<option>${m}</option>`).join('');
+  document.getElementById('res-source-filter').innerHTML =
+    '<option value="">All Channels</option>' + sources.map(s=>`<option>${s}</option>`).join('');
+  document.getElementById('res-status-filter').innerHTML =
+    '<option value="">All Statuses</option>' + statuses.map(s=>`<option>${s}</option>`).join('');
 
   filteredRes = [...D.records];
 
+  function fmtDate(d) {
+    return d ? (d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')) : '—';
+  }
+
   function rowHTML(r, i) {
     const bg = i%2===0?'style="background:#F0F7FB"':'';
-    const fmtDate = d => d ? (d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')) : '—';
     const badgeCls = r.is_cancelled ? 'canc' : 'booked';
+    const monoSm = `style="font-family:'DM Mono',monospace;font-size:10px"`;
     const cells = [
-      ...(hasCols.res_id   ? [`<td class="dim" style="font-family:'DM Mono',monospace;font-size:10px">${r.res_id||'—'}</td>`] : []),
+      ...(hasCols.res_id     ? [`<td class="dim" ${monoSm}>${r.res_id||'—'}</td>`]                  : []),
       `<td class="dim" style="font-size:11px">${r.group}</td>`,
+      ...(hasCols.sub_group  ? [`<td class="dim" style="font-size:11px">${r.sub_group||'—'}</td>`]  : []),
       `<td>${r.clean_prop}</td>`,
-      ...(hasCols.city     ? [`<td class="dim">${r.city}</td>`] : []),
+      ...(hasCols.city       ? [`<td class="dim">${r.city||'—'}</td>`]                              : []),
       `<td class="num">${fmtDate(r.checkin)}</td>`,
       `<td class="num">${fmtDate(r.checkout)}</td>`,
-      ...(hasCols.booked   ? [`<td class="num">${fmtDate(r.booked_date)}</td>`] : []),
+      ...(hasCols.booked     ? [`<td class="num">${fmtDate(r.booked_date)}</td>`]                   : []),
       `<td class="num">${r.los}</td>`,
       `<td class="num">${r.book_win>=0?r.book_win:'—'}</td>`,
-      `<td class="num">${curr()} ${fmtd(r.adr)}</td>`,
-      `<td class="num">${curr()} ${fmt(r.rental_rev)}</td>`,
+      `<td class="num">${fmtAmt(r.adr)}</td>`,
+      `<td class="num">${fmtInt(r.rental_rev)}</td>`,
+      ...(hasCols.total_rev  ? [`<td class="num">${fmtInt(r.total_rev)}</td>`]                      : []),
       `<td class="dim">${r.currency}</td>`,
       `<td style="font-size:11px">${r.source}</td>`,
-      ...(hasCols.bedrooms ? [`<td class="num">${r.bedrooms}</td>`] : []),
+      ...(hasCols.bedrooms   ? [`<td class="num">${r.bedrooms}</td>`]                               : []),
+      ...(hasCols.sync_price ? [`<td class="dim">${r.sync_price||'—'}</td>`]                        : []),
+      ...(hasCols.pms        ? [`<td class="dim" style="font-size:11px">${r.pms||'—'}</td>`]        : []),
+      ...(hasCols.tags       ? [`<td class="dim" style="font-size:10px">${r.tags||'—'}</td>`]       : []),
       `<td><span class="badge ${badgeCls}">${r.status}</span></td>`,
       `<td class="num">${r.checkin_month}</td>`,
     ];
@@ -1206,21 +1465,25 @@ function renderReservations() {
   }
 
   function applyFilters() {
-    const q  = document.getElementById('res-search').value.toLowerCase();
-    const g  = gf.value; const m=mf.value; const s=sf.value; const st=stf.value;
+    const q   = document.getElementById('res-search').value.toLowerCase();
+    const g   = document.getElementById('res-group-filter').value;
+    const sg  = sgf.value;
+    const m   = document.getElementById('res-month-filter').value;
+    const s   = document.getElementById('res-source-filter').value;
+    const st  = document.getElementById('res-status-filter').value;
     filteredRes = D.records.filter(r => {
-      const txt=[r.res_id,r.group,r.clean_prop,r.city,r.source,r.checkin_month,r.status].join(' ').toLowerCase();
-      return (!q||txt.includes(q))&&(!g||r.group===g)&&(!m||r.checkin_month===m)&&(!s||r.source===s)&&(!st||r.status===st);
+      const txt = [r.res_id,r.group,r.sub_group,r.clean_prop,r.city,r.source,r.checkin_month,r.status,r.tags].join(' ').toLowerCase();
+      return (!q||txt.includes(q)) && (!g||r.group===g) && (!sg||r.sub_group===sg)
+          && (!m||r.checkin_month===m) && (!s||r.source===s) && (!st||r.status===st);
     });
     document.getElementById('res-tbody').innerHTML = filteredRes.map((r,i)=>rowHTML(r,i)).join('');
     document.getElementById('res-count').textContent = `${filteredRes.length} of ${D.records.length}`;
   }
 
-  document.getElementById('res-search').addEventListener('input',applyFilters);
-  gf.addEventListener('change',applyFilters);
-  mf.addEventListener('change',applyFilters);
-  sf.addEventListener('change',applyFilters);
-  stf.addEventListener('change',applyFilters);
+  ['res-search','res-group-filter','res-subgroup-filter','res-month-filter','res-source-filter','res-status-filter'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener(id==='res-search'?'input':'change', applyFilters);
+  });
   applyFilters();
 }
 
@@ -1235,11 +1498,8 @@ document.querySelectorAll('.nav-tabs a').forEach(a => {
     a.classList.add('active');
     document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
     document.getElementById('page-'+a.dataset.page).classList.add('active');
-    // Re-animate bars when switching to dashboard
     if (a.dataset.page==='dashboard') {
-      setTimeout(()=>{
-        document.querySelectorAll('.bar-fill[data-w]').forEach(el=>{el.style.width=el.dataset.w+'%';});
-      }, 100);
+      setTimeout(()=>{ document.querySelectorAll('.bar-fill[data-w]').forEach(el=>{ el.style.width=el.dataset.w+'%'; }); }, 100);
     }
   });
 });
@@ -1247,16 +1507,10 @@ document.querySelectorAll('.nav-tabs a').forEach(a => {
 // ════════════════════════════════════════════════════════
 //  UTILITIES
 // ════════════════════════════════════════════════════════
-function showOverlay(msg) {
-  document.getElementById('parse-msg').textContent=msg;
-  document.getElementById('parsing-overlay').classList.add('active');
-}
+function showOverlay(msg) { document.getElementById('parse-msg').textContent=msg; document.getElementById('parsing-overlay').classList.add('active'); }
 function updateOverlay(msg) { document.getElementById('parse-msg').textContent=msg; }
 function hideOverlay() { document.getElementById('parsing-overlay').classList.remove('active'); }
-function showError(msg) {
-  document.getElementById('error-text').textContent=msg;
-  document.getElementById('error-banner').classList.add('active');
-}
+function showError(msg) { document.getElementById('error-text').textContent=msg; document.getElementById('error-banner').classList.add('active'); }
 function dismissError() { document.getElementById('error-banner').classList.remove('active'); }
 
 function resetApp() {

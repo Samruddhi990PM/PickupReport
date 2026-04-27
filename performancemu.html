@@ -241,7 +241,7 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(
   <div class="up-card">
     <div class="up-icon">🏨</div>
     <h1>Property <em>Performance</em></h1>
-    <p>Upload your Excel file with <strong>Actuals</strong> and <strong>Budget</strong> sheets.<br>
+    <p>Upload your Excel file with <strong>Actuals</strong>, <strong>Budget</strong> and <strong>LYST</strong> sheets.<br>
     YTD and OTB ranges are calculated automatically from <strong>today's date</strong>.</p>
     <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
       <div class="drop-icon">📊</div>
@@ -250,7 +250,7 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(
     </div>
     <input type="file" id="file-input" accept=".xlsx,.xls">
     <button class="up-btn" onclick="document.getElementById('file-input').click()">Select Excel File</button>
-    <div class="up-note">Required sheets: <em>Actuals</em> · <em>Budget</em></div>
+    <div class="up-note">Required: <em>Actuals</em> · <em>Budget</em> · <em>LYST</em> (last year same time OTB)</div>
     <div id="up-status"></div>
   </div>
 </div>
@@ -403,13 +403,21 @@ function processFile(file) {
   r.onload = e => {
     try {
       const wb = XLSX.read(e.target.result, { type: 'array', cellDates: true });
-      const ai = wb.SheetNames.findIndex(s => s.toLowerCase().includes('actual'));
-      const bi = wb.SheetNames.findIndex(s => s.toLowerCase().includes('budget'));
+      const names = wb.SheetNames;
+      const ai = names.findIndex(s => s.toLowerCase().includes('actual'));
+      const bi = names.findIndex(s => s.toLowerCase().includes('budget'));
       if (ai === -1 || bi === -1) { setStatus('Cannot find Actuals / Budget sheets.', true); return; }
-      const aRaw = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[ai]], { header: 1, defval: null });
-      const bRaw = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[bi]], { header: 1, defval: null });
+
+      // LYST sheet: strict match on sheet named 'LYST' (case-insensitive)
+      const li = names.findIndex(s => s.trim().toLowerCase() === 'lyst');
+      if (li === -1) { setStatus('Cannot find LYST sheet — please rename your sheet to "LYST".', true); return; }
+
+      const aRaw = XLSX.utils.sheet_to_json(wb.Sheets[names[ai]], { header: 1, defval: null });
+      const bRaw = XLSX.utils.sheet_to_json(wb.Sheets[names[bi]], { header: 1, defval: null });
+      const lRaw = li !== -1 ? XLSX.utils.sheet_to_json(wb.Sheets[names[li]], { header: 1, defval: null }) : null;
+
       setStatus('Parsing…');
-      dashData = parseData(aRaw, bRaw);
+      dashData = parseData(aRaw, bRaw, lRaw);
       if (!dashData) { setStatus('Could not parse structure — check column layout.', true); return; }
       setStatus('');
       showDashboard(file.name);
@@ -431,10 +439,10 @@ function normDate(cell) {
   return null;
 }
 
-function parseData(aRaw, bRaw) {
+function parseData(aRaw, bRaw, lRaw) {
   if (!aRaw || aRaw.length < 3) return null;
 
-  // Find properties from row 0
+  // ── Find properties (row 0: names, every 3 cols starting at 1)
   const propRow = aRaw[0];
   const properties = [];
   for (let i = 0; i < propRow.length; i++) {
@@ -444,8 +452,9 @@ function parseData(aRaw, bRaw) {
   }
   if (!properties.length) return null;
 
-  // Index all rows by normalised date for O(1) lookup
+  // ── Index rows by normalised date label
   function indexRows(raw) {
+    if (!raw) return {};
     const idx = {};
     for (let r = 2; r < raw.length; r++) {
       const lbl = normDate(raw[r][0]);
@@ -455,9 +464,15 @@ function parseData(aRaw, bRaw) {
   }
   const aIdx = indexRows(aRaw);
   const bIdx = indexRows(bRaw);
-  const allDataMonths = Object.keys(aIdx); // All months present in Actuals sheet
 
-  // Compute dynamic YTD / OTB ranges
+  // ── LYST index: Sheet1/LYST tab stores prior-year data.
+  // The sheet has rows like "Jan 2025", "May 2025" etc.
+  // For a 2026 month "Jan 2026" we look up "Jan 2025" in the LYST index.
+  // If no LYST sheet, fall back to Actuals index with prior year label.
+  const lIdx = lRaw ? indexRows(lRaw) : aIdx;
+  const lystHasOwnSheet = !!lRaw;
+
+  const allDataMonths = Object.keys(aIdx);
   const { ytdMonths, otbMonths } = computeRanges(allDataMonths);
   if (!ytdMonths.length && !otbMonths.length) return null;
 
@@ -477,15 +492,28 @@ function parseData(aRaw, bRaw) {
     };
   }
 
-  const result = { properties: properties.map(p => p.name), propData: {}, ytdMonths, otbMonths };
+  // ── For a given 2026 month label, get the correct LYST label to look up.
+  // LYST sheet stores prior-year rows (e.g. "Jan 2025").
+  // lystLookupLabel("Jan 2026") → "Jan 2025"
+  function lystLookupLabel(m) { return lystLabel(m); } // already shifts year by -1
+
+  const result = {
+    properties: properties.map(p => p.name),
+    propData: {},
+    ytdMonths,
+    otbMonths,
+    lystSource: lystHasOwnSheet ? 'LYST sheet' : 'Actuals (prior year)'
+  };
 
   for (const prop of properties) {
     const pd = {};
     for (const m of ALL) {
+      const lyLabel = lystLookupLabel(m);
       pd[m] = {
         actual: triple(aIdx, m, prop),
         budget: triple(bIdx, m, prop),
-        lyst: triple(aIdx, lystLabel(m), prop)
+        // Strictly use LYST sheet if available, else fall back to Actuals prior year
+        lyst: triple(lIdx, lyLabel, prop)
       };
     }
     result.propData[prop.name] = pd;
@@ -504,7 +532,7 @@ function showDashboard(filename) {
   const { ytdMonths, otbMonths } = dashData;
   const today = new Date();
   document.getElementById('date-pill').textContent =
-    `Today: ${MO_NAMES[today.getMonth()]} ${today.getFullYear()}`;
+    `Today: ${MO_NAMES[today.getMonth()]} ${today.getFullYear()} · LYST: ${dashData.lystSource}`;
 
   // Tab labels with dynamic ranges
   const ytdFirst = ytdMonths[0]?.split(' ')[0] ?? '';

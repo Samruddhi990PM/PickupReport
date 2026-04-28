@@ -223,6 +223,9 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(
   margin-top:6px;margin-bottom:1px;font-weight:600;}
 .otb-mo-gap-val{font-size:11px;font-weight:800;}
 
+/* Budget benchmark + gap block — grouped at bottom of OTB cell */
+.otb-mo-bud-block{margin-top:10px;padding-top:8px;border-top:1px solid var(--glass-b);}
+
 /* Metric section label inside OTB cell */
 .otb-mo-metric-lbl{font-size:8px;color:var(--text3);text-transform:uppercase;
   letter-spacing:.6px;font-weight:700;margin-bottom:2px;}
@@ -917,7 +920,7 @@ function renderOTBRows() {
         let dStr;
         if (unit === '%')       dStr = Math.abs(delta).toFixed(0) + '%';
         else if (unit === 'pp') dStr = Math.abs(delta).toFixed(1) + 'pp';
-        else                    dStr = '€' + Math.abs(Math.round(delta)); // € unit
+        else                    dStr = '€' + Math.abs(Math.round(delta));
         return `<div class="otb-mo-ref-row">
           <div class="otb-mo-ref-dot" style="background:${dotColor};"></div>
           <span class="otb-mo-ref-val">${refVal}</span>
@@ -935,33 +938,39 @@ function renderOTBRows() {
           ${budBarW > 0 ? `<div style="position:absolute;left:${budBarW}%;top:-1px;width:2px;height:5px;background:var(--gold);border-radius:1px;"></div>` : ''}
         </div>
 
-        <!-- REV -->
+        <!-- REV: actual + LYST only -->
         <div class="otb-mo-metric-lbl">REV</div>
         <div class="otb-mo-rev">${a.rev > 0 ? fCS(a.rev) : '—'}</div>
         <div class="otb-mo-refs">
-          ${b.rev > 0 ? refRow('var(--gold)', fCS(b.rev), revVsBud, revVsBud >= 0, '%') : ''}
-          ${l.rev > 0 ? refRow('#3B82F6',    fCS(l.rev),  revVsLY,  revVsLY  >= 0, '%') : ''}
+          ${l.rev > 0 ? refRow('#3B82F6', fCS(l.rev), revVsLY, revVsLY >= 0, '%') : ''}
         </div>
 
-        <!-- OCC -->
+        <!-- OCC: actual + LYST only -->
         <div class="otb-mo-metric-lbl" style="margin-top:7px;">OCC</div>
         <div class="otb-mo-occ ${occCls}">${a.occ > 0 ? (a.occ * 100).toFixed(1) + '%' : '—'}</div>
         <div class="otb-mo-refs">
-          ${b.occ > 0 ? refRow('var(--gold)', (b.occ*100).toFixed(1)+'%', occVsBud, occVsBud >= 0, 'pp') : ''}
-          ${l.occ > 0 ? refRow('#3B82F6',     (l.occ*100).toFixed(1)+'%', occVsLY,  occVsLY  >= 0, 'pp') : ''}
+          ${l.occ > 0 ? refRow('#3B82F6', (l.occ*100).toFixed(1)+'%', occVsLY, occVsLY >= 0, 'pp') : ''}
         </div>
 
-        <!-- ADR -->
+        <!-- ADR: actual + LYST only -->
         <div class="otb-mo-metric-lbl" style="margin-top:7px;">ADR</div>
         <div class="otb-mo-adr-val">€${a.adr > 0 ? Math.round(a.adr) : '—'}</div>
         <div class="otb-mo-refs">
-          ${b.adr > 0 ? refRow('var(--gold)', '€'+Math.round(b.adr), adrVsBud, adrVsBud >= 0, '€') : ''}
-          ${l.adr > 0 ? refRow('#3B82F6',     '€'+Math.round(l.adr), adrVsLY,  adrVsLY  >= 0, '€') : ''}
+          ${l.adr > 0 ? refRow('#3B82F6', '€'+Math.round(l.adr), adrVsLY, adrVsLY >= 0, '€') : ''}
         </div>
 
-        ${gapToBud !== null ? `
-          <div class="otb-mo-gap-lbl">GAP TO BUD</div>
-          <div class="otb-mo-gap-val ${gapToBud >= 0 ? 'up' : 'dn'}">${gapToBud >= 0 ? '+' : ''}${fCS(gapToBud)}</div>
+        <!-- BUDGET BENCHMARK + GAP — grouped together at bottom -->
+        ${b.rev > 0 ? `
+          <div class="otb-mo-bud-block">
+            <div class="otb-mo-gap-lbl">BUDGET BENCHMARK</div>
+            <div class="otb-mo-refs">
+              ${refRow('var(--gold)', fCS(b.rev), revVsBud, revVsBud >= 0, '%')}
+              ${b.occ > 0 ? refRow('var(--gold)', (b.occ*100).toFixed(1)+'%', occVsBud, occVsBud >= 0, 'pp') : ''}
+              ${b.adr > 0 ? refRow('var(--gold)', '€'+Math.round(b.adr), adrVsBud, adrVsBud >= 0, '€') : ''}
+            </div>
+            <div class="otb-mo-gap-lbl" style="margin-top:5px;">GAP TO BUD</div>
+            <div class="otb-mo-gap-val ${gapToBud >= 0 ? 'up' : 'dn'}">${gapToBud >= 0 ? '+' : ''}${fCS(gapToBud)}</div>
+          </div>
         ` : ''}
       </div>`;
     }).join('');

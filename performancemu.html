@@ -950,8 +950,8 @@ function renderOTBRows() {
 // ─────────────────────────────────────────────────────────
 // UTILS
 // ─────────────────────────────────────────────────────────
-function fC(v)  { if (v === null || isNaN(v)) return '—'; const a = Math.abs(v), s = v < 0 ? '-' : ''; return s + '€' + Math.round(a).toLocaleString(); }
-function fCS(v) { if (v === null || isNaN(v)) return '—'; const a = Math.abs(v), s = v < 0 ? '-' : ''; return a >= 1e6 ? s + '€' + (a / 1e6).toFixed(1) + 'M' : a >= 1000 ? s + '€' + (a / 1000).toFixed(1) + 'k' : s + '€' + Math.round(a); }
+function fC(v)  { if (v === null || isNaN(v)) return '—'; const a = Math.abs(v), s = v < 0 ? '-' : ''; return s + '€' + Math.round(a).toLocaleString('en-US'); }
+function fCS(v) { if (v === null || isNaN(v)) return '—'; const a = Math.abs(v), s = v < 0 ? '-' : ''; return a >= 1e6 ? s + '€' + (a / 1e6).toLocaleString('en-US', {minimumFractionDigits:1, maximumFractionDigits:1}) + 'M' : a >= 1000 ? s + '€' + (a / 1000).toLocaleString('en-US', {minimumFractionDigits:1, maximumFractionDigits:1}) + 'k' : s + '€' + Math.round(a).toLocaleString('en-US'); }
 function sg(v)  { return v >= 0 ? '+' : ''; }
 </script>
 </body>

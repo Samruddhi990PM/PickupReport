@@ -223,6 +223,13 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(
   margin-top:6px;margin-bottom:1px;font-weight:600;}
 .otb-mo-gap-val{font-size:11px;font-weight:800;}
 
+/* Metric section label inside OTB cell */
+.otb-mo-metric-lbl{font-size:8px;color:var(--text3);text-transform:uppercase;
+  letter-spacing:.6px;font-weight:700;margin-bottom:2px;}
+
+/* ADR value (same weight/size as OCC) */
+.otb-mo-adr-val{font-size:12px;font-weight:700;color:var(--text);margin-bottom:2px;}
+
 ::-webkit-scrollbar{width:5px;height:5px;}
 ::-webkit-scrollbar-track{background:var(--bg2);}
 ::-webkit-scrollbar-thumb{background:var(--bg4);border-radius:3px;}
@@ -892,35 +899,64 @@ function renderOTBRows() {
 
       // Revenue deltas
       const revVsBud = b.rev > 0 ? (a.rev - b.rev) / b.rev * 100 : null;
-      const revVsLY  = l.rev > 0 ? (a.rev - l.rev)  / l.rev  * 100 : null;
+      const revVsLY  = l.rev > 0 ? (a.rev - l.rev) / l.rev * 100  : null;
 
-      // Gap to budget
+      // OCC deltas (percentage points)
+      const occVsBud = b.occ > 0 ? (a.occ - b.occ) * 100 : null;
+      const occVsLY  = l.occ > 0 ? (a.occ - l.occ) * 100  : null;
+
+      // ADR deltas (absolute €)
+      const adrVsBud = b.adr > 0 ? a.adr - b.adr : null;
+      const adrVsLY  = l.adr > 0 ? a.adr - l.adr  : null;
+
+      // Gap to budget (revenue)
       const gapToBud = b.rev > 0 ? a.rev - b.rev : null;
+
+      function refRow(dotColor, refVal, delta, deltaPositive, unit) {
+        if (delta === null) return '';
+        let dStr;
+        if (unit === '%')       dStr = Math.abs(delta).toFixed(0) + '%';
+        else if (unit === 'pp') dStr = Math.abs(delta).toFixed(1) + 'pp';
+        else                    dStr = '€' + Math.abs(Math.round(delta)); // € unit
+        return `<div class="otb-mo-ref-row">
+          <div class="otb-mo-ref-dot" style="background:${dotColor};"></div>
+          <span class="otb-mo-ref-val">${refVal}</span>
+          <span class="otb-mo-ref-delta ${deltaPositive ? 'up' : 'dn'}">${deltaPositive ? '▲' : '▼'}${dStr}</span>
+        </div>`;
+      }
 
       return `<div class="otb-mo-cell">
         <div class="otb-mo-name">${moName}</div>
-        <!-- Pace bar: OTB occ coloured, with thin LY and budget markers -->
+
+        <!-- Pace bar -->
         <div style="position:relative;height:3px;background:var(--bg4);border-radius:2px;margin-bottom:8px;">
           <div style="position:absolute;left:0;top:0;height:100%;width:${barW}%;background:${barColor};border-radius:2px;"></div>
           ${lyBarW > 0 ? `<div style="position:absolute;left:${lyBarW}%;top:-1px;width:2px;height:5px;background:#3B82F6;border-radius:1px;"></div>` : ''}
           ${budBarW > 0 ? `<div style="position:absolute;left:${budBarW}%;top:-1px;width:2px;height:5px;background:var(--gold);border-radius:1px;"></div>` : ''}
         </div>
 
+        <!-- REV -->
+        <div class="otb-mo-metric-lbl">REV</div>
         <div class="otb-mo-rev">${a.rev > 0 ? fCS(a.rev) : '—'}</div>
-        <div class="otb-mo-occ ${occCls}">${a.occ > 0 ? (a.occ * 100).toFixed(1) + '%' : '—'}</div>
-        <div class="otb-mo-adr">ADR ${a.adr > 0 ? '€' + Math.round(a.adr) : '—'}</div>
-
         <div class="otb-mo-refs">
-          ${b.rev > 0 ? `<div class="otb-mo-ref-row">
-            <div class="otb-mo-ref-dot" style="background:var(--gold);"></div>
-            <span class="otb-mo-ref-val">${fCS(b.rev)}</span>
-            ${revVsBud !== null ? `<span class="otb-mo-ref-delta ${revVsBud >= 0 ? 'up' : 'dn'}">${revVsBud >= 0 ? '▲' : '▼'}${Math.abs(revVsBud).toFixed(0)}%</span>` : ''}
-          </div>` : ''}
-          ${l.rev > 0 ? `<div class="otb-mo-ref-row">
-            <div class="otb-mo-ref-dot" style="background:#3B82F6;"></div>
-            <span class="otb-mo-ref-val">${fCS(l.rev)}</span>
-            ${revVsLY !== null ? `<span class="otb-mo-ref-delta ${revVsLY >= 0 ? 'up' : 'dn'}">${revVsLY >= 0 ? '▲' : '▼'}${Math.abs(revVsLY).toFixed(0)}%</span>` : ''}
-          </div>` : ''}
+          ${b.rev > 0 ? refRow('var(--gold)', fCS(b.rev), revVsBud, revVsBud >= 0, '%') : ''}
+          ${l.rev > 0 ? refRow('#3B82F6',    fCS(l.rev),  revVsLY,  revVsLY  >= 0, '%') : ''}
+        </div>
+
+        <!-- OCC -->
+        <div class="otb-mo-metric-lbl" style="margin-top:7px;">OCC</div>
+        <div class="otb-mo-occ ${occCls}">${a.occ > 0 ? (a.occ * 100).toFixed(1) + '%' : '—'}</div>
+        <div class="otb-mo-refs">
+          ${b.occ > 0 ? refRow('var(--gold)', (b.occ*100).toFixed(1)+'%', occVsBud, occVsBud >= 0, 'pp') : ''}
+          ${l.occ > 0 ? refRow('#3B82F6',     (l.occ*100).toFixed(1)+'%', occVsLY,  occVsLY  >= 0, 'pp') : ''}
+        </div>
+
+        <!-- ADR -->
+        <div class="otb-mo-metric-lbl" style="margin-top:7px;">ADR</div>
+        <div class="otb-mo-adr-val">€${a.adr > 0 ? Math.round(a.adr) : '—'}</div>
+        <div class="otb-mo-refs">
+          ${b.adr > 0 ? refRow('var(--gold)', '€'+Math.round(b.adr), adrVsBud, adrVsBud >= 0, '€') : ''}
+          ${l.adr > 0 ? refRow('#3B82F6',     '€'+Math.round(l.adr), adrVsLY,  adrVsLY  >= 0, '€') : ''}
         </div>
 
         ${gapToBud !== null ? `

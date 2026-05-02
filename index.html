@@ -26,7 +26,6 @@ nav{position:sticky;top:0;z-index:100;background:#1a1a1a;display:flex;align-item
 .brand-mono{display:none}
 .brand-name{font-family:'DM Serif Display',serif;font-size:15px;color:var(--white);letter-spacing:.5px;line-height:1.2}
 .brand-name span{color:var(--amber);font-style:italic}
-.brand-subtitle{font-size:9px;color:rgba(255,255,255,.4);letter-spacing:1.5px;text-transform:uppercase;font-family:'DM Mono',monospace}
 .nav-tabs{display:flex;align-items:center;list-style:none;padding:0 8px;flex:1;overflow-x:auto;scrollbar-width:none;height:100%}
 .nav-tabs::-webkit-scrollbar{display:none}
 .nav-tabs li{display:flex;align-items:center;height:100%}
@@ -215,7 +214,6 @@ main{padding:28px 32px;max-width:1600px;background:#FFFFFF}
   <a class="brand" href="https://www.strategycues.com" target="_blank" rel="noopener">
     <div>
       <span class="brand-name">STRATEGY <span>CUES</span></span>
-      <div class="brand-subtitle">Pickup Insights</div>
     </div>
   </a>
   <ul class="nav-tabs" id="nav-tabs">
@@ -274,13 +272,8 @@ main{padding:28px 32px;max-width:1600px;background:#FFFFFF}
 <div id="upload-screen">
   <div class="upload-hero">
     <h1>Pickup <em>Insights</em></h1>
-    <p>Generate a fully interactive Pickup intelligence dashboard.</p>
-  </div>
-  <div class="upload-zone" id="upload-zone">
-    <input type="file" id="file-input" accept=".csv,.xls,.xlsx">
-    <span class="upload-icon">📂</span>
-    <h3>Just upload the PriceLabs file from the path below, nice and easy!</h3>
-    <p style="font-size:11px;color:#888;line-height:1.7;margin-bottom:16px;background:#F7F7F7;border-radius:8px;padding:12px 16px;border-left:3px solid var(--amber);text-align:left">
+    <p>Just upload the PriceLabs file from the path below, nice and easy!</p>
+    <p style="margin-top:10px;font-size:11px;color:#888;line-height:1.7;background:#F7F7F7;border-radius:8px;padding:12px 16px;border-left:3px solid var(--amber);text-align:left;max-width:560px">
       <strong style="color:#1a1a1a;font-size:11.5px">PriceLabs</strong>
       <span style="color:#bbb;margin:0 4px">→</span> <strong style="color:#444">Portfolio Analytics</strong>
       <span style="color:#bbb;margin:0 4px">→</span> <strong style="color:#444">Bookings Report</strong>
@@ -288,6 +281,10 @@ main{padding:28px 32px;max-width:1600px;background:#FFFFFF}
       <span style="color:#bbb;margin:0 4px">→</span> Select <em>Booked, Blocked, Cancelled</em> in the <strong>Booking Status Dropdown</strong>
       <span style="color:#bbb;margin:0 4px">→</span> Download the report
     </p>
+  </div>
+  <div class="upload-zone" id="upload-zone">
+    <input type="file" id="file-input" accept=".csv,.xls,.xlsx">
+    <span class="upload-icon">📂</span>
     <div class="upload-formats">
       <span class="fmt-badge">.CSV</span>
       <span class="fmt-badge">.XLS</span>

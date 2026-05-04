@@ -456,10 +456,15 @@ function parseData(aRaw, bRaw, lRaw) {
   const propRow = aRaw[0];
   const properties = [];
   for (let i = 0; i < propRow.length; i++) {
-    const v = propRow[i];
-    if (v && typeof v === 'string' && v.trim().length > 2 && !v.trim().toLowerCase().startsWith('sp'))
-      properties.push({ name: v.trim(), col: i });
+  const v = propRow[i];
+
+  if (v && typeof v === 'string' && v.trim().length > 2) {
+    properties.push({
+      name: v.trim(),
+      col: i
+    });
   }
+}
   if (!properties.length) return null;
 
   // ── Index rows by normalised date label

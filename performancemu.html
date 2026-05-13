@@ -379,7 +379,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
       <div class="legend">
         <div class="li"><div class="ld" style="background:var(--text);"></div>Actual (ACT)</div>
         <div class="li"><div class="ld" style="background:var(--gold);"></div>Budget (BUD)</div>
-        <div class="li"><div class="ld" style="background:#3B82F6;"></div>Last Year (LY)</div>
+        <div class="li"><div class="ld" style="background:#3B82F6;"></div>LYST</div>
         <div class="li"><div class="ld" style="background:var(--green);border-radius:50%;"></div>Above reference</div>
         <div class="li"><div class="ld" style="background:var(--red);border-radius:50%;"></div>Below reference</div>
       </div>
@@ -795,7 +795,7 @@ function renderYTDSummary() {
   document.getElementById('ytd-sum').innerHTML = [
     { lbl: 'Total Revenue YTD',   val: fC(tR),        dlt: `${sg(bP)}${Math.abs(bP).toFixed(1)}% vs Budget`, cls: bP >= 0 ? 'up' : 'dn' },
     { lbl: 'vs Budget',           val: fC(tR - tB),   dlt: `Budget: ${fC(tB)}`,  cls: tR >= tB ? 'up' : 'dn' },
-    { lbl: 'vs Last Year',        val: fC(tR - tL),   dlt: `LYST: ${fC(tL)}`,    cls: tR >= tL ? 'up' : 'dn' },
+    { lbl: 'vs LYST',             val: fC(tR - tL),   dlt: `LYST: ${fC(tL)}`,    cls: tR >= tL ? 'up' : 'dn' },
     { lbl: 'Properties',          val: properties.length, dlt: `${abv} above · ${blw} below budget`, cls: 'nt' },
     { lbl: 'Above Budget',        val: abv,            dlt: `of ${properties.length - newU} tracked`, cls: 'up' },
     { lbl: 'New Units (no LYST)', val: newU,           dlt: 'No prior year data', cls: 'nt' }
@@ -908,7 +908,7 @@ function renderYTDGrid() {
           <span class="rev-bar-val">${fCS(tB)}</span>
         </div>` : ''}
         ${tL > 0 ? `<div class="rev-bar-row">
-          <span class="rev-bar-tag">LY</span>
+          <span class="rev-bar-tag">LYST</span>
           <div class="rev-bar-track"><div class="rev-bar-fill fill-ly" style="width:${barW(tL)}%"></div></div>
           <span class="rev-bar-val">${fCS(tL)}</span>
         </div>` : ''}

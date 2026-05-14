@@ -938,7 +938,48 @@ function aggregate(records) {
     return arr;
   }
 
-  const monthly  = addShare(pivot(booked, r => r.checkin_month).sort((a,b)=>a.key.localeCompare(b.key)));
+  // ── Stay-date monthly split ──────────────────────────────────
+  // For each booking, split ADR revenue night-by-night across months.
+  // Night N falls in the month of (checkin + N days).
+  // Bookings with no checkin/adr fall back to checkin_month bucket.
+  var monthlyMap = {};
+  booked.forEach(function(r) {
+    if (!r.checkin || r.adr <= 0 || r.los <= 0) {
+      // fallback: assign all revenue to checkin_month
+      var k = r.checkin_month || 'Unknown';
+      if (!monthlyMap[k]) monthlyMap[k] = {key:k, Revenue:0, RoomNights:0, Reservations:0, _adrs:[], _loss:[]};
+      monthlyMap[k].Revenue      += r.rental_rev;
+      monthlyMap[k].RoomNights   += r.los;
+      monthlyMap[k].Reservations += 1;
+      if (r.adr > 0) monthlyMap[k]._adrs.push(r.adr);
+      monthlyMap[k]._loss.push(r.los);
+      return;
+    }
+    var nightsAccounted = 0;
+    for (var n = 0; n < r.los; n++) {
+      var stayDate = new Date(r.checkin.getFullYear(), r.checkin.getMonth(), r.checkin.getDate() + n);
+      var mk = stayDate.getFullYear() + '-' + String(stayDate.getMonth()+1).padStart(2,'0');
+      if (!monthlyMap[mk]) monthlyMap[mk] = {key:mk, Revenue:0, RoomNights:0, Reservations:0, _adrs:[], _loss:[], _res:new Set()};
+      monthlyMap[mk].Revenue    += r.adr;
+      monthlyMap[mk].RoomNights += 1;
+      if (!monthlyMap[mk]._res.has(r.res_id || n + '_' + mk)) {
+        monthlyMap[mk]._res.add(r.res_id || n + '_' + mk);
+      }
+      if (r.adr > 0) monthlyMap[mk]._adrs.push(r.adr);
+      nightsAccounted++;
+    }
+    // Count reservation once in the month of check-in for Reservations metric
+    var ck = r.checkin_month || 'Unknown';
+    if (monthlyMap[ck]) monthlyMap[ck].Reservations += 1;
+    else { monthlyMap[ck] = {key:ck, Revenue:0, RoomNights:0, Reservations:1, _adrs:[], _loss:[], _res:new Set()}; }
+  });
+  var monthly = Object.values(monthlyMap).map(function(g) {
+    g.ADR      = g._adrs && g._adrs.length ? g._adrs.reduce(function(a,b){return a+b;},0)/g._adrs.length : 0;
+    g.LOS      = g._loss && g._loss.length ? g._loss.reduce(function(a,b){return a+b;},0)/g._loss.length : (g.RoomNights / (g.Reservations||1));
+    g.RevPerRN = g.RoomNights > 0 ? g.Revenue/g.RoomNights : 0;
+    return g;
+  }).sort(function(a,b){ return a.key.localeCompare(b.key); });
+  addShare(monthly);
   const channel  = addShare(pivot(booked, r => r.source));
   const groups   = addShare(pivot(booked, r => r.group));
   const props    = addShare(pivot(booked, r => r.clean_prop+'|||'+r.group));

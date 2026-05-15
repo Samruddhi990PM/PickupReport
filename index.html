@@ -198,6 +198,15 @@ main{padding:28px 32px;max-width:1600px;background:#FFFFFF}
 .res-count{font-size:11px;color:var(--steel);font-family:'DM Mono',monospace}
 .scroll-x{overflow-x:auto}
 
+/* ── DASHBOARD FILTERS ── */
+.dash-filters{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:14px 18px;background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:20px;border-left:3px solid var(--amber)}
+.dash-filters label{font-size:10px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;color:var(--steel);white-space:nowrap}
+.dash-filter-select{border:1px solid #E0E0E0;border-radius:var(--radius);padding:6px 10px;font-family:inherit;font-size:12px;outline:none;background:#fff;cursor:pointer;color:var(--ink);min-width:140px;max-width:220px}
+.dash-filter-select:focus{border-color:var(--amber)}
+.dash-filter-clear{background:var(--amber);color:var(--ink);border:none;border-radius:var(--radius);padding:6px 14px;font-size:11px;font-weight:700;cursor:pointer;letter-spacing:.4px;white-space:nowrap;transition:opacity .2s}
+.dash-filter-clear:hover{opacity:.8}
+.dash-filter-count{font-size:11px;color:var(--steel);font-family:'DM Mono',monospace;margin-left:auto}
+
 /* ── FOOTER ── */
 
 /* ── UNMAPPED WARNING ── */
@@ -296,6 +305,14 @@ main{padding:28px 32px;max-width:1600px;background:#FFFFFF}
 
     <!-- DASHBOARD PAGE -->
     <div class="page" id="page-dashboard">
+      <div class="dash-filters" id="dash-filters" style="display:none">
+        <label>Filter</label>
+        <select class="dash-filter-select" id="df-group"><option value="">All Groups</option></select>
+        <select class="dash-filter-select" id="df-subgroup"><option value="">All Sub-Groups</option></select>
+        <select class="dash-filter-select" id="df-listing"><option value="">All Listings</option></select>
+        <button class="dash-filter-clear" onclick="clearDashFilters()">Clear Filters</button>
+        <span class="dash-filter-count" id="df-count"></span>
+      </div>
       <div id="warn-container"></div>
       <div class="kpi-grid" id="kpi-grid"></div>
       <div class="charts-row">
@@ -1072,6 +1089,210 @@ const curr  = () => D.currencies?.[0] || '';
 const fmtAmt = n => `${curr()} ${fmtd(n)}`.trim();
 const fmtInt = n => `${curr()} ${fmt(n)}`.trim();
 
+// ════════════════════════════════════════════════════════
+//  DASHBOARD FILTER STATE
+// ════════════════════════════════════════════════════════
+var DF = { group: '', subgroup: '', listing: '' };
+
+// ALL_BOOKED caches all non-cancelled records for cascading filter options
+var ALL_BOOKED = [];
+
+function initDashFilters() {
+  ALL_BOOKED = D.records.filter(function(r){ return !r.is_cancelled; });
+
+  var gSel  = document.getElementById('df-group');
+  var sgSel = document.getElementById('df-subgroup');
+  var lSel  = document.getElementById('df-listing');
+
+  // Populate Group (always from full dataset)
+  var groups = Array.from(new Set(ALL_BOOKED.map(function(r){ return r.group; }))).filter(Boolean).sort();
+  gSel.innerHTML = '<option value="">All Groups</option>' + groups.map(function(v){ return '<option>'+v+'</option>'; }).join('');
+
+  // Check if sub-groups exist at all
+  var allSubgroups = ALL_BOOKED.map(function(r){ return r.sub_group; }).filter(Boolean);
+  sgSel.style.display = allSubgroups.length ? '' : 'none';
+
+  // Wire up cascading onChange handlers
+  gSel.onchange = function() {
+    DF.group    = gSel.value;
+    DF.subgroup = '';   // reset downstream
+    DF.listing  = '';
+    rebuildSubgroupOptions();
+    rebuildListingOptions();
+    applyDashFilters();
+  };
+  sgSel.onchange = function() {
+    DF.subgroup = sgSel.value;
+    DF.listing  = '';   // reset downstream
+    rebuildListingOptions();
+    applyDashFilters();
+  };
+  lSel.onchange = function() {
+    DF.listing = lSel.value;
+    applyDashFilters();
+  };
+
+  // Initial population
+  rebuildSubgroupOptions();
+  rebuildListingOptions();
+
+  document.getElementById('dash-filters').style.display = '';
+  applyDashFilters();
+}
+
+function rebuildSubgroupOptions() {
+  var sgSel = document.getElementById('df-subgroup');
+  // Filter records by selected group (if any)
+  var base = DF.group
+    ? ALL_BOOKED.filter(function(r){ return r.group === DF.group; })
+    : ALL_BOOKED;
+  var subgroups = Array.from(new Set(base.map(function(r){ return r.sub_group; }))).filter(Boolean).sort();
+  sgSel.innerHTML = '<option value="">All Sub-Groups</option>' + subgroups.map(function(v){ return '<option>'+v+'</option>'; }).join('');
+  sgSel.value = DF.subgroup;
+  // Hide if no sub-groups available
+  var allSubgroups = ALL_BOOKED.map(function(r){ return r.sub_group; }).filter(Boolean);
+  sgSel.style.display = allSubgroups.length ? '' : 'none';
+}
+
+function rebuildListingOptions() {
+  var lSel = document.getElementById('df-listing');
+  // Filter records by selected group + subgroup
+  var base = ALL_BOOKED.filter(function(r) {
+    if (DF.group    && r.group     !== DF.group)    return false;
+    if (DF.subgroup && r.sub_group !== DF.subgroup) return false;
+    return true;
+  });
+  var listings = Array.from(new Set(base.map(function(r){ return r.clean_prop; }))).filter(Boolean).sort();
+  lSel.innerHTML = '<option value="">All Listings</option>' + listings.map(function(v){ return '<option>'+v+'</option>'; }).join('');
+  lSel.value = DF.listing;
+}
+
+function clearDashFilters() {
+  DF = { group: '', subgroup: '', listing: '' };
+  document.getElementById('df-group').value = '';
+  rebuildSubgroupOptions();
+  rebuildListingOptions();
+  applyDashFilters();
+}
+
+function getFilteredRecords() {
+  return D.records.filter(function(r) {
+    if (DF.group    && r.group      !== DF.group)    return false;
+    if (DF.subgroup && r.sub_group  !== DF.subgroup) return false;
+    if (DF.listing  && r.clean_prop !== DF.listing)  return false;
+    return true;
+  });
+}
+
+function applyDashFilters() {
+  var filtered = getFilteredRecords();
+  var booked   = filtered.filter(function(r){ return !r.is_cancelled; });
+  var cancelled= filtered.filter(function(r){ return  r.is_cancelled; });
+
+  // Update count badge
+  var total = D.records.filter(function(r){ return !r.is_cancelled; }).length;
+  var isFiltered = DF.group || DF.subgroup || DF.listing;
+  var countEl = document.getElementById('df-count');
+  countEl.textContent = isFiltered
+    ? booked.length + ' of ' + total + ' bookings'
+    : total + ' bookings';
+
+  // Re-aggregate for dashboard only
+  var FD = aggregateFiltered(booked, cancelled);
+
+  renderKPIs(FD);
+  renderMonthlyChart(FD);
+  renderDonut(FD);
+  renderMonthlyTable(FD);
+  renderChannelTable(FD);
+  renderInsights(FD);
+}
+
+function aggregateFiltered(booked, cancelled) {
+  var totalRev = booked.reduce(function(s,r){ return s+r.rental_rev; }, 0);
+
+  function addShare(arr) {
+    arr.forEach(function(g){ g.RevShare = totalRev > 0 ? g.Revenue/totalRev*100 : 0; });
+    return arr;
+  }
+
+  // Stay-date monthly split
+  var monthlyMap = {};
+  booked.forEach(function(r) {
+    var MONTH_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    if (!r.checkin || r.adr <= 0 || r.los <= 0) {
+      var k = r.checkin_month || 'Unknown';
+      if (!monthlyMap[k]) monthlyMap[k] = {key:k, Revenue:0, RoomNights:0, Reservations:0, _adrs:[], _loss:[]};
+      monthlyMap[k].Revenue      += r.rental_rev;
+      monthlyMap[k].RoomNights   += r.los;
+      monthlyMap[k].Reservations += 1;
+      if (r.adr > 0) monthlyMap[k]._adrs.push(r.adr);
+      monthlyMap[k]._loss.push(r.los);
+      return;
+    }
+    for (var n = 0; n < r.los; n++) {
+      var stayDate = new Date(r.checkin.getFullYear(), r.checkin.getMonth(), r.checkin.getDate() + n);
+      var mk = stayDate.getFullYear() + '-' + String(stayDate.getMonth()+1).padStart(2,'0');
+      if (!monthlyMap[mk]) monthlyMap[mk] = {key:mk, Revenue:0, RoomNights:0, Reservations:0, _adrs:[], _loss:[]};
+      monthlyMap[mk].Revenue    += r.adr;
+      monthlyMap[mk].RoomNights += 1;
+      monthlyMap[mk]._adrs.push(r.adr);
+    }
+    var ck = r.checkin_month || 'Unknown';
+    if (!monthlyMap[ck]) monthlyMap[ck] = {key:ck, Revenue:0, RoomNights:0, Reservations:0, _adrs:[], _loss:[]};
+    monthlyMap[ck].Reservations += 1;
+  });
+  var monthly = Object.values(monthlyMap).map(function(g) {
+    g.ADR      = g._adrs.length ? g._adrs.reduce(function(a,b){return a+b;},0)/g._adrs.length : 0;
+    g.LOS      = g.Reservations > 0 ? g.RoomNights / g.Reservations : 0;
+    g.RevPerRN = g.RoomNights > 0 ? g.Revenue/g.RoomNights : 0;
+    return g;
+  }).sort(function(a,b){ return a.key.localeCompare(b.key); });
+  addShare(monthly);
+
+  // Channel pivot
+  var chMap = {};
+  booked.forEach(function(r) {
+    var k = r.source;
+    if (!chMap[k]) chMap[k] = {key:k, Revenue:0, RoomNights:0, Reservations:0, _adrs:[], _loss:[]};
+    chMap[k].Revenue      += r.rental_rev;
+    chMap[k].RoomNights   += r.los;
+    chMap[k].Reservations += 1;
+    if (r.adr > 0) chMap[k]._adrs.push(r.adr);
+    chMap[k]._loss.push(r.los);
+  });
+  var channel = Object.values(chMap).map(function(g) {
+    g.ADR      = g._adrs.length ? g._adrs.reduce(function(a,b){return a+b;},0)/g._adrs.length : 0;
+    g.LOS      = g._loss.length ? g._loss.reduce(function(a,b){return a+b;},0)/g._loss.length : 0;
+    g.RevPerRN = g.RoomNights > 0 ? g.Revenue/g.RoomNights : 0;
+    return g;
+  }).sort(function(a,b){ return b.Revenue-a.Revenue; });
+  addShare(channel);
+
+  var bookWinSamples = booked.filter(function(r){ return r.book_win > 0; });
+  var props = D.props; // keep for insights ref
+
+  return {
+    booked: booked,
+    cancelled: cancelled,
+    monthly: monthly,
+    channel: channel,
+    props: props,
+    currencies: D.currencies,
+    filename: D.filename,
+    generatedAt: D.generatedAt,
+    kpis: {
+      total_rev: totalRev,
+      total_rn:  booked.reduce(function(s,r){ return s+r.los; }, 0),
+      avg_adr:   booked.length ? booked.reduce(function(s,r){ return s+r.adr; }, 0)/booked.length : 0,
+      avg_los:   booked.length ? booked.reduce(function(s,r){ return s+r.los; }, 0)/booked.length : 0,
+      n_res:     booked.length,
+      avg_win:   bookWinSamples.length ? bookWinSamples.reduce(function(s,r){ return s+r.book_win; },0)/bookWinSamples.length : 0,
+      n_canc:    cancelled.length,
+    },
+  };
+}
+
 function renderDashboard() {
   const meta = `Source: ${D.filename} · Generated: ${D.generatedAt} · ${D.kpis.n_res} bookings · ${D.kpis.n_canc} cancellations`;
   document.getElementById('header-meta').textContent  = meta;
@@ -1081,17 +1302,12 @@ function renderDashboard() {
   document.querySelectorAll('.nav-tabs a')[0].classList.add('active');
   document.querySelectorAll('.page')[0].classList.add('active');
 
-  renderKPIs();
-  renderMonthlyChart();
-  renderDonut();
-  renderMonthlyTable();
-  renderChannelTable();
-  renderInsights();
   renderGroupTable();
   renderDrilldown();
   renderPropTable();
   renderCancellations();
   renderReservations();
+  initDashFilters(); // populates filters + calls applyDashFilters() which renders KPIs/charts
 
   document.getElementById('upload-screen').style.display  = 'none';
   document.getElementById('dashboard-wrapper').style.display = 'block';
@@ -1101,8 +1317,9 @@ function renderDashboard() {
 }
 
 // ── KPIs ──
-function renderKPIs() {
-  const k = D.kpis;
+function renderKPIs(FD) {
+  FD = FD || D;
+  const k = FD.kpis;
   const kpis = [
     {label:'TOTAL REVENUE',   value:fmtInt(k.total_rev),                        sub:'Rental revenue, all bookings'},
     {label:'ROOM NIGHTS',     value:fmt(k.total_rn),                             sub:'Total LOS across portfolio'},
@@ -1111,6 +1328,7 @@ function renderKPIs() {
     {label:'AVG LOS',         value:k.avg_los.toFixed(1)+' nights',              sub:'Average length of stay'},
     {label:'AVG BOOK WINDOW', value:k.avg_win>0 ? Math.round(k.avg_win)+' days':'—', sub:'Days from booking to check-in'},
   ];
+  var _curr = (FD.currencies && FD.currencies[0]) || '';
   const grid = document.getElementById('kpi-grid');
   grid.innerHTML = '';
   kpis.forEach(k => {
@@ -1123,14 +1341,15 @@ function renderKPIs() {
 }
 
 // ── BAR CHART ──
-function renderMonthlyChart() {
+function renderMonthlyChart(FD) {
+  FD = FD || D;
   var el = document.getElementById('monthly-chart');
   el.innerHTML = '';
   if (!D.monthly.length) { el.innerHTML='<p style="color:var(--rule);font-size:12px">No data</p>'; return; }
-  var maxRev = Math.max.apply(null, D.monthly.map(function(m){ return m.Revenue; }));
-  var minRev = Math.min.apply(null, D.monthly.map(function(m){ return m.Revenue; }));
+  var maxRev = Math.max.apply(null, FD.monthly.map(function(m){ return m.Revenue; }));
+  var minRev = Math.min.apply(null, FD.monthly.map(function(m){ return m.Revenue; }));
   var MONTH_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  D.monthly.forEach(function(m, i) {
+  FD.monthly.forEach(function(m, i) {
     var pct = maxRev > 0 ? (m.Revenue/maxRev*100).toFixed(1) : 0;
     var parts = m.key.split('-');
     var yr = parts[0] ? parts[0].slice(2) : '';
@@ -1144,47 +1363,84 @@ function renderMonthlyChart() {
     el.innerHTML += '<div class="bar-row">' +
       '<div class="bar-label">' + label + '</div>' +
       '<div class="bar-track"><div class="bar-fill" style="width:0%;background:' + barColor + '" data-w="' + pct + '">' +
-        '<span class="bar-val" style="color:#000;font-weight:600;">' + fmtInt(m.Revenue) + '</span>' +
+        '<span class="bar-val" style="color:#000;font-weight:600;">' + ((FD.currencies&&FD.currencies[0])||'') + ' ' + fmt(m.Revenue) + '</span>' +
       '</div></div>' +
     '</div>';
   });
 }
 
 // ── DONUT ──
-function renderDonut() {
+function renderDonut(FD) {
+  FD = FD || D;
   const svg = document.getElementById('donut-svg');
   const leg = document.getElementById('donut-legend');
   svg.innerHTML = ''; leg.innerHTML = '';
   const cx=200,cy=200,r=176,inner=96;
-  let start = -Math.PI/2;
-  const top8 = D.channel.slice(0,8);
-  const otherRev = D.channel.slice(8).reduce((s,c)=>s+c.Revenue,0);
-  const totalRev = D.kpis.total_rev || 1;
+
+  const top8 = FD.channel.slice(0,8);
+  const otherRev = FD.channel.slice(8).reduce((s,c)=>s+c.Revenue,0);
+  const totalRev = FD.kpis.total_rev || 1;
   if (otherRev > 0) top8.push({key:'Other',Revenue:otherRev,RevShare:otherRev/totalRev*100});
+
+  // ── Draw slices ──────────────────────────────────────────────────
+  if (top8.length === 1) {
+    // Single channel = full circle: SVG arc can't handle 360° in one arc command,
+    // so draw two semicircles (each 180°) stitched together.
+    const color = CH_COLORS[0];
+    // Outer circle as two arcs
+    const outerPath = document.createElementNS('http://www.w3.org/2000/svg','path');
+    outerPath.setAttribute('d',
+      'M ' + cx + ' ' + (cy-r) +
+      ' A ' + r + ' ' + r + ' 0 1 1 ' + cx + ' ' + (cy+r) +
+      ' A ' + r + ' ' + r + ' 0 1 1 ' + cx + ' ' + (cy-r) + ' Z'
+    );
+    outerPath.setAttribute('fill', color);
+    outerPath.setAttribute('opacity', '0.92');
+    svg.appendChild(outerPath);
+    // Inner hole (white donut cutout)
+    const innerPath = document.createElementNS('http://www.w3.org/2000/svg','path');
+    innerPath.setAttribute('d',
+      'M ' + cx + ' ' + (cy-inner) +
+      ' A ' + inner + ' ' + inner + ' 0 1 1 ' + cx + ' ' + (cy+inner) +
+      ' A ' + inner + ' ' + inner + ' 0 1 1 ' + cx + ' ' + (cy-inner) + ' Z'
+    );
+    innerPath.setAttribute('fill', '#FFFFFF');
+    svg.appendChild(innerPath);
+  } else {
+    // Multiple channels — standard arc path per slice
+    let start = -Math.PI/2;
+    top8.forEach((ch,i) => {
+      const angle = (ch.RevShare/100)*2*Math.PI;
+      const end = start+angle;
+      const x1=cx+r*Math.cos(start),     y1=cy+r*Math.sin(start);
+      const x2=cx+r*Math.cos(end),       y2=cy+r*Math.sin(end);
+      const ix1=cx+inner*Math.cos(start),iy1=cy+inner*Math.sin(start);
+      const ix2=cx+inner*Math.cos(end),  iy2=cy+inner*Math.sin(end);
+      const large = angle>Math.PI?1:0;
+      const color = CH_COLORS[i%CH_COLORS.length];
+      const path = document.createElementNS('http://www.w3.org/2000/svg','path');
+      path.setAttribute('d','M '+ix1+' '+iy1+' L '+x1+' '+y1+' A '+r+' '+r+' 0 '+large+' 1 '+x2+' '+y2+' L '+ix2+' '+iy2+' A '+inner+' '+inner+' 0 '+large+' 0 '+ix1+' '+iy1+' Z');
+      path.setAttribute('fill',color); path.setAttribute('opacity','0.92');
+      svg.appendChild(path);
+      start = end;
+    });
+  }
+
+  // ── Legend ───────────────────────────────────────────────────────
   top8.forEach((ch,i) => {
-    const angle = (ch.RevShare/100)*2*Math.PI;
-    const end = start+angle;
-    const x1=cx+r*Math.cos(start),y1=cy+r*Math.sin(start);
-    const x2=cx+r*Math.cos(end),  y2=cy+r*Math.sin(end);
-    const ix1=cx+inner*Math.cos(start),iy1=cy+inner*Math.sin(start);
-    const ix2=cx+inner*Math.cos(end),  iy2=cy+inner*Math.sin(end);
-    const large = angle>Math.PI?1:0;
     const color = CH_COLORS[i%CH_COLORS.length];
-    const path = document.createElementNS('http://www.w3.org/2000/svg','path');
-    path.setAttribute('d',`M ${ix1} ${iy1} L ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2} L ${ix2} ${iy2} A ${inner} ${inner} 0 ${large} 0 ${ix1} ${iy1} Z`);
-    path.setAttribute('fill',color); path.setAttribute('opacity','0.92');
-    svg.appendChild(path);
-    leg.innerHTML += `<div class="legend-item">
-      <div class="legend-dot" style="background:${color}"></div>
-      <span class="legend-text">${ch.key}</span>
-      <span class="legend-pct">${fmtp(ch.RevShare)}</span>
-    </div>`;
-    start = end;
+    leg.innerHTML += '<div class="legend-item">' +
+      '<div class="legend-dot" style="background:'+color+'"></div>' +
+      '<span class="legend-text">'+ch.key+'</span>' +
+      '<span class="legend-pct">'+fmtp(ch.RevShare)+'</span>' +
+    '</div>';
   });
+
+  // ── Centre labels ─────────────────────────────────────────────────
   const t1=document.createElementNS('http://www.w3.org/2000/svg','text');
   t1.setAttribute('x',cx);t1.setAttribute('y',cy-8);t1.setAttribute('text-anchor','middle');
   t1.setAttribute('font-size','28');t1.setAttribute('fill','#0B0F1A');t1.setAttribute('font-family','DM Mono,monospace');
-  t1.textContent=D.kpis.n_res; svg.appendChild(t1);
+  t1.textContent=FD.kpis.n_res; svg.appendChild(t1);
   const t2=document.createElementNS('http://www.w3.org/2000/svg','text');
   t2.setAttribute('x',cx);t2.setAttribute('y',cy+20);t2.setAttribute('text-anchor','middle');
   t2.setAttribute('font-size','16');t2.setAttribute('fill','#7F8C8D');t2.setAttribute('font-family','Inter,sans-serif');
@@ -1192,11 +1448,12 @@ function renderDonut() {
 }
 
 // ── MONTHLY TABLE ──
-function renderMonthlyTable() {
+function renderMonthlyTable(FD) {
+  FD = FD || D;
   const tbody = document.getElementById('monthly-tbody');
   tbody.innerHTML='';
   let tRev=0,tRN=0,tRes=0;
-  D.monthly.forEach((m,i) => {
+  FD.monthly.forEach((m,i) => {
     tRev+=m.Revenue;tRN+=m.RoomNights;tRes+=m.Reservations;
     const bg = i%2===0?'style="background:#F0F7FB"':'';
     tbody.innerHTML+=`<tr ${bg}>
@@ -1210,19 +1467,16 @@ function renderMonthlyTable() {
       <td class="num"><div class="share-bar"><div class="share-track"><div class="share-fill gold" style="width:${m.RevShare}%"></div></div>${fmtp(m.RevShare)}</div></td>
     </tr>`;
   });
-  document.getElementById('monthly-tfoot').innerHTML=`
-    <td>TOTAL / AVG</td>
-    <td class="num">${fmtInt(tRev)}</td><td class="num">${fmt(tRN)}</td><td class="num">${tRes}</td>
-    <td class="num">—</td><td class="num">—</td>
-    <td class="num">${tRN>0?fmtAmt(tRev/tRN):'—'}</td><td class="num">100.0%</td>`;
+  document.getElementById('monthly-tfoot').innerHTML='<td>TOTAL / AVG</td><td class="num">'+fmtInt(tRev)+'</td><td class="num">'+fmt(tRN)+'</td><td class="num">'+tRes+'</td><td class="num">—</td><td class="num">—</td><td class="num">'+(tRN>0?fmtAmt(tRev/tRN):'—')+'</td><td class="num">100.0%</td>';
 }
 
 // ── CHANNEL TABLE ──
-function renderChannelTable() {
+function renderChannelTable(FD) {
+  FD = FD || D;
   const tbody = document.getElementById('channel-tbody');
   tbody.innerHTML='';
   let tRev=0,tRN=0,tRes=0;
-  D.channel.forEach((c,i) => {
+  FD.channel.forEach((c,i) => {
     tRev+=c.Revenue;tRN+=c.RoomNights;tRes+=c.Reservations;
     const bg = i%2===0?'style="background:#F0F7FB"':'';
     tbody.innerHTML+=`<tr ${bg}>
@@ -1242,12 +1496,13 @@ function renderChannelTable() {
 }
 
 // ── INSIGHTS ──
-function renderInsights() {
-  const k = D.kpis;
-  const topCh = D.channel[0];
-  const topProp = D.props[0];
-  const lastMinute = D.booked.filter(r=>r.book_win>=0&&r.book_win<=7).length;
-  const cancRate = D.records.length ? (k.n_canc/D.records.length*100).toFixed(1) : 0;
+function renderInsights(FD) {
+  FD = FD || D;
+  const k = FD.kpis;
+  const topCh = FD.channel[0];
+  const topProp = FD.props[0];
+  const lastMinute = FD.booked.filter(r=>r.book_win>=0&&r.book_win<=7).length;
+  const cancRate = FD.booked.length + FD.cancelled.length > 0 ? (k.n_canc/(FD.booked.length+FD.cancelled.length)*100).toFixed(1) : 0;
   const notes = [
     ['🎯 CHANNEL DEPENDENCY',
      topCh ? `${topCh.key} = ${fmtp(topCh.RevShare)} of revenue (${topCh.Reservations} reservations). ${topCh.RevShare>40?'High OTA concentration — consider activating direct booking channel to protect net margin.':'Channel mix looks reasonable. Continue monitoring share trends weekly.'}` : 'Insufficient channel data.'],

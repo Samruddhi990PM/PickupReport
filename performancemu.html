@@ -15,7 +15,7 @@
   /* Strategy Cues brand */
   --gold:#F5C400;--gold-light:#FFF8D6;--gold-dim:rgba(245,196,0,0.10);--gold-border:rgba(245,196,0,0.35);
   /* Surfaces */
-  --bg:#FFFFFF;--bg2:#FFFFFF;--bg3:#F7F7F7;--bg4:#EEEEEE;
+  --bg:#e0dcd1a9;--bg2:#FFFFFF;--bg3:#F7F7F7;--bg4:#EEEEEE;
   --glass:rgba(0,0,0,0.03);--glass-b:rgba(0,0,0,0.09);
   /* Text */
   --text:#0B0F1A;--text2:#444444;--text3:#888888;
@@ -126,7 +126,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
 .sec-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:.75rem;}
 .sec-title{font-size:17px;font-weight:700;display:flex;align-items:center;gap:8px;}
 .badge{font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px;
-  background:var(--gold-dim);color:var(--gold);border:1px solid var(--gold-border);letter-spacing:.5px;}
+  background:rgba(136,136,136,0.10);color:#888888;border:1px solid rgba(136,136,136,0.25);letter-spacing:.5px;}
 
 /* ── SUMMARY CARDS ── */
 .sum-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:9px;margin-bottom:1.25rem;}
@@ -144,8 +144,8 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
 .f-lbl{font-size:11px;color:var(--text3);margin-right:2px;}
 .fb{padding:4px 12px;border-radius:20px;border:1px solid var(--glass-b);background:var(--glass);
   color:var(--text2);font-size:11px;font-weight:500;cursor:pointer;transition:all .15s;}
-.fb:hover{border-color:var(--gold-border);color:var(--text);}
-.fb.active{background:var(--gold-dim);border-color:var(--gold-border);color:var(--gold);font-weight:700;}
+.fb:hover{border-color:var(--gold-border);color:var(--text);box-shadow:0 0 8px rgba(245,196,0,0.3);}
+.fb.active{background:var(--glass);border-color:var(--glass-b);color:var(--text);font-weight:700;}
 
 /* ── LEGEND ── */
 .legend{display:flex;gap:14px;margin-bottom:.9rem;flex-wrap:wrap;}
@@ -421,9 +421,12 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
 <script>
 // ─────────────────────────────────────────────────────────
 // DYNAMIC DATE LOGIC
-// YTD  = Jan of data year  →  current calendar month (inclusive)
-// OTB  = next month  →  last month available in the data
+// YTD  = Jan of data year  →  previous month (exclusive of current)
+// OTB  = current month  →  last month available in the data
 // "current month" = whichever month we are in right now (today)
+// Example: If today is May 2026:
+//   YTD Actuals = Jan 2026 to Apr 2026
+//   OTB = May 2026 to Dec 2026
 // ─────────────────────────────────────────────────────────
 const MO_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
@@ -458,10 +461,10 @@ function computeRanges(allDataMonths) {
     .filter(l => parseInt(l.split(' ')[1]) === dataYear)
     .sort((a, b) => MO_NAMES.indexOf(a.split(' ')[0]) - MO_NAMES.indexOf(b.split(' ')[0]));
 
-  // YTD cutoff: if today is in the data year, use today's month; otherwise use all
+  // YTD cutoff: if today is in the data year, use previous month; otherwise use all
   let ytdCutoffIdx; // 0-based month index (inclusive)
   if (todayYear === dataYear) {
-    ytdCutoffIdx = todayMonthIdx; // e.g. April = 3
+    ytdCutoffIdx = todayMonthIdx - 1; // e.g. if today is May (4), YTD ends at April (3)
   } else if (todayYear > dataYear) {
     ytdCutoffIdx = 11; // All months
   } else {
@@ -975,32 +978,28 @@ function renderOTBKPIs() {
   const { otbMonths, properties, propData } = dashData;
   if (!otbMonths.length) return;
 
-  let totalOTB = 0, totalBgt = 0, totalLY = 0, unitsNeedingAttention = 0;
+  // For tiles: only use current month (first month in otbMonths)
+  const currentMonth = otbMonths[0];
+  
+  let totalOTB = 0, totalBgt = 0, totalLY = 0;
   for (const prop of properties) {
     const pd = propData[prop];
-    let pOTB = 0, pBgt = 0, pLY = 0;
-    for (const m of otbMonths) {
-      pOTB += pd[m].actual.rev;
-      pBgt += pd[m].budget.rev;
-      pLY  += pd[m].lyst.rev;
-    }
-    totalOTB += pOTB; totalBgt += pBgt; totalLY += pLY;
-    // Units needing attention = OTB occ < 30% in any month
-    for (const m of otbMonths) {
-      if (pd[m].actual.occ > 0 && pd[m].actual.occ < 0.30) { unitsNeedingAttention++; break; }
-    }
+    // Only sum current month for tiles
+    totalOTB += pd[currentMonth].actual.rev;
+    totalBgt += pd[currentMonth].budget.rev;
+    totalLY  += pd[currentMonth].lyst.rev;
   }
   const gapToBgt = totalOTB - totalBgt;
   const vsLY = totalLY > 0 ? (totalOTB - totalLY) / totalLY * 100 : null;
-  const yr = otbMonths[0]?.split(' ')[1] ?? '';
-  const rangeLabel = `${otbMonths[0]?.split(' ')[0]}–${otbMonths[otbMonths.length-1]?.split(' ')[0]}`;
+  const yr = currentMonth.split(' ')[1] ?? '';
+  const currentMonthLabel = currentMonth.split(' ')[0];
 
   document.getElementById('otb-kpi-bar').innerHTML = [
-    { lbl: `TOTAL OTB · ${rangeLabel}`,
+    { lbl: `CURRENT MONTH · ${currentMonthLabel}`,
       val: fCS(totalOTB),
-      sub: `<span style="color:var(--text3);">Revenue on the books today</span>`,
+      sub: `<span style="color:var(--text3);">Revenue on the books for ${currentMonthLabel}</span>`,
       valCls: '' },
-    { lbl: `BUDGET TARGET · ${rangeLabel}`,
+    { lbl: `BUDGET TARGET · ${currentMonthLabel}`,
       val: fCS(totalBgt),
       sub: totalBgt > 0
         ? `<span class="${gapToBgt >= 0 ? 'up' : 'dn'}">${gapToBgt >= 0 ? '▲' : '▼'} ${fCS(Math.abs(gapToBgt))} ${gapToBgt >= 0 ? 'ahead' : 'gap to fill'}</span>`
@@ -1008,12 +1007,8 @@ function renderOTBKPIs() {
       valCls: '' },
     { lbl: 'VS LYST PACE',
       val: vsLY !== null ? `${vsLY >= 0 ? '▲' : '▼'} ${Math.abs(vsLY).toFixed(1)}%` : '—',
-      sub: `<span style="color:var(--text3);">vs same period ${parseInt(yr)-1} OTB</span>`,
-      valCls: vsLY === null ? '' : vsLY >= 0 ? 'up' : 'dn' },
-    { lbl: 'UNITS NEEDING ACTION',
-      val: unitsNeedingAttention,
-      sub: `<span style="color:var(--text3);">&lt;30% OTB occupancy</span>`,
-      valCls: unitsNeedingAttention > 0 ? 'dn' : 'up' }
+      sub: `<span style="color:var(--text3);">vs ${currentMonthLabel} ${parseInt(yr)-1}</span>`,
+      valCls: vsLY === null ? '' : vsLY >= 0 ? 'up' : 'dn' }
   ].map(k => `<div class="otb-kpi">
     <div class="otb-kpi-lbl">${k.lbl}</div>
     <div class="otb-kpi-val ${k.valCls}">${k.val}</div>

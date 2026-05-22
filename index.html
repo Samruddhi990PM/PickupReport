@@ -17,10 +17,12 @@
   --amber:#F5C400; --dark:#1a1a1a;
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Inter',sans-serif;background:#FFFFFF;color:var(--ink);font-size:13px;line-height:1.5;min-height:100vh}
+html{overflow-x:hidden;width:100%}
+body{font-family:'Inter',sans-serif;background:#FFFFFF;color:var(--ink);font-size:13px;line-height:1.5;min-height:100vh;overflow-x:hidden;width:100%;max-width:100vw}
 
 /* ── NAV ── */
 nav{position:sticky;top:0;z-index:100;background:#1a1a1a;display:flex;align-items:center;border-bottom:3px solid var(--amber);height:70px;box-shadow:0 2px 20px rgba(0,0,0,.3)}
+#dashboard-wrapper,#daily-comparison-wrapper,#upload-screen{width:100%;max-width:100%;overflow-x:hidden}
 .brand{display:flex;align-items:center;gap:0;padding:0 20px;border-right:1px solid rgba(255,255,255,.08);text-decoration:none;height:100%;transition:opacity .2s}
 .brand:hover{opacity:.85}
 
@@ -91,15 +93,15 @@ nav{position:sticky;top:0;z-index:100;background:#1a1a1a;display:flex;align-item
 .required-dot{color:var(--red);margin-left:2px}
 
 /* ── PAGE HEADER ── */
-.page-header{background:#1a1a1a;padding:20px 32px 18px;border-bottom:3px solid var(--amber);display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.page-header{background:#1a1a1a;padding:20px 32px 18px;border-bottom:3px solid var(--amber);display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;overflow:hidden;width:100%;max-width:100%}
 .page-header h1{font-family:'DM Serif Display',serif;font-size:24px;color:var(--white);font-weight:400}
 .page-header h1 em{color:var(--gold);font-style:italic}
-.page-header p{color:rgba(255,255,255,.55);font-size:12px;margin-top:3px}
+.page-header p{color:rgba(255,255,255,.55);font-size:12px;margin-top:3px;max-width:calc(100% - 60px);word-wrap:break-word}
 .reload-btn{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);color:rgba(255,255,255,.7);padding:7px 16px;border-radius:6px;font-size:12px;cursor:pointer;white-space:nowrap;transition:all .2s}
 .reload-btn:hover{background:rgba(245,196,0,.15);border-color:var(--amber);color:var(--amber)}
 
 /* ── MAIN ── */
-main{padding:28px 32px;max-width:1600px;background:#FFFFFF}
+main{padding:28px 32px;max-width:1600px;background:#FFFFFF;overflow-x:hidden;width:100%}
 .page{display:none}.page.active{display:block}
 
 /* ── SECTIONS ── */
@@ -153,7 +155,7 @@ main{padding:28px 32px;max-width:1600px;background:#FFFFFF}
 .legend-pct{font-family:'DM Mono',monospace;font-size:10px;color:var(--ink);font-weight:500;margin-left:auto}
 
 /* ── TABLES ── */
-.table-wrap{background:#FFFFFF;border-radius:var(--radius);box-shadow:0 2px 12px rgba(0,0,0,.07);overflow:hidden;animation:fadeUp .5s ease both}
+.table-wrap{background:#FFFFFF;border-radius:var(--radius);box-shadow:0 2px 12px rgba(0,0,0,.07);overflow:hidden;animation:fadeUp .5s ease both;max-width:100%}
 .table-wrap table{width:100%;border-collapse:collapse}
 .table-wrap thead tr{background:#1a1a1a}
 .table-wrap thead th{padding:10px 14px;text-align:left;font-size:10px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;color:rgba(255,255,255,.6);white-space:nowrap}
@@ -212,6 +214,50 @@ main{padding:28px 32px;max-width:1600px;background:#FFFFFF}
 /* ── UNMAPPED WARNING ── */
 .warn-box{background:#FFF8E1;border:1px solid #F0C040;border-radius:6px;padding:14px 18px;margin-bottom:18px;font-size:12px;color:#7A5A00;display:flex;gap:10px;align-items:flex-start}
 .warn-box ul{margin:6px 0 0 18px}
+
+/* ── DAILY COMPARISON ── */
+.daily-comparison-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:24px}
+.daily-comparison-header h2{font-family:'DM Serif Display',serif;font-size:20px;color:var(--ink)}
+.daily-comparison-table-wrapper{background:#FFFFFF;border-radius:var(--radius);box-shadow:0 2px 12px rgba(0,0,0,.07);overflow:hidden;position:relative;max-width:100%}
+.daily-comparison-scroll{overflow-x:auto;position:relative;max-width:100%}
+.daily-comparison-table{width:100%;border-collapse:separate;border-spacing:0 3px;position:relative}
+.daily-comparison-table thead tr{background:#1a1a1a}
+.daily-comparison-table thead th{padding:8px 12px;text-align:center;font-size:11px;font-weight:600;letter-spacing:.3px;color:rgba(255,255,255,.85);white-space:normal;word-wrap:break-word;border-bottom:2px solid var(--amber);position:sticky;top:0;background:#1a1a1a;z-index:10;cursor:pointer;user-select:none;transition:background .2s;width:180px;min-width:180px;max-width:180px;line-height:1.3}
+.daily-comparison-table thead th:hover{background:#2a2a2a}
+.daily-comparison-table thead th:first-child{position:sticky;left:0;z-index:20;background:#1a1a1a;text-align:center;width:400px;min-width:400px;max-width:400px}
+.daily-comparison-table thead th:first-child:hover{background:#2a2a2a}
+.daily-comparison-table thead th.comments-header{width:350px;min-width:350px;max-width:350px;cursor:default}
+.daily-comparison-table thead th.sortable:after{content:'⇅';margin-left:4px;opacity:.3;font-size:11px}
+.daily-comparison-table thead th.sort-asc:after{content:'↑';opacity:1;color:var(--amber)}
+.daily-comparison-table thead th.sort-desc:after{content:'↓';opacity:1;color:var(--amber)}
+.daily-comparison-table tbody tr{background:#FFFFFF;transition:background .15s}
+.daily-comparison-table tbody tr:hover{background:#FAFAFA}
+.daily-comparison-table tbody td{padding:6px 12px;font-size:12px;color:#333;vertical-align:middle;white-space:nowrap;text-overflow:ellipsis;overflow:hidden;width:180px;min-width:180px;max-width:180px;text-align:right}
+.daily-comparison-table tbody td:first-child{position:sticky;left:0;background:#FFFFFF;z-index:5;font-weight:400;white-space:nowrap;text-overflow:ellipsis;overflow:hidden;width:400px;min-width:400px;max-width:400px;text-align:left;border-right:1px solid #E0E0E0}
+.daily-comparison-table tbody tr:hover td:first-child{background:#FAFAFA}
+.daily-comparison-table tbody td.num{text-align:right;font-family:inherit;font-size:12px}
+.daily-comparison-table tbody td.num.has-bar{position:relative;padding:6px 12px}
+.daily-comparison-table tbody td.num.has-bar .bar-bg{position:absolute;top:1px;right:1px;bottom:1px;left:1px;background:linear-gradient(to right,rgba(34,139,34,0.7),rgba(144,238,144,0.3));border-radius:0;z-index:0}
+.daily-comparison-table tbody td.num.has-bar .bar-value{position:relative;z-index:1;font-weight:500}
+.daily-comparison-table tbody td.comments-cell{white-space:normal;word-wrap:break-word;width:350px;min-width:350px;max-width:350px;cursor:text;padding:6px 12px;line-height:1.5;vertical-align:top;font-size:11px;text-align:left}
+.daily-comparison-table tbody td.comments-cell[contenteditable="true"]{outline:none;background:#FFFFFF;transition:background .2s,box-shadow .2s}
+.daily-comparison-table tbody td.comments-cell[contenteditable="true"]:hover{background:#FFFBF0}
+.daily-comparison-table tbody td.comments-cell[contenteditable="true"]:focus{background:#FFF8E1;box-shadow:inset 0 0 0 2px var(--amber)}
+.daily-comparison-table tbody td.comments-cell:empty:before{content:'Click to add comment...';color:#BBB;font-style:italic;font-size:10px}
+.file-status-msg{display:inline-flex;align-items:center;gap:8px;color:var(--green);font-size:12px;font-weight:500}
+.no-file-msg{text-align:center;padding:60px 24px;color:var(--steel);font-size:13px}
+.no-file-msg p{margin-bottom:8px}
+.no-file-msg .upload-icon{font-size:48px;opacity:.3;margin-bottom:16px;display:block}
+
+/* ── TOOLTIPS ── */
+.tooltip-wrapper{position:relative;display:inline-block;z-index:9999}
+.tooltip{position:fixed;padding:12px 16px;background:rgba(0,0,0,0.92);color:#FFFFFF;font-size:11px;line-height:1.8;border-radius:6px;white-space:pre-line;opacity:0;visibility:hidden;transition:opacity .2s,visibility .2s;pointer-events:none;z-index:999999;min-width:200px;text-align:left;box-shadow:0 4px 12px rgba(0,0,0,0.3)}
+.tooltip:before{content:'';position:absolute;bottom:100%;left:50%;transform:translateX(-50%);border:6px solid transparent;border-bottom-color:rgba(0,0,0,0.92)}
+.tooltip-wrapper:hover .tooltip{opacity:1;visibility:visible;pointer-events:auto}
+.upload-icon-btn{display:inline-flex;align-items:center;justify-content:center;background:var(--amber);color:var(--ink);border:none;border-radius:50%;padding:10px;cursor:pointer;transition:opacity .2s,transform .2s;box-shadow:0 2px 8px rgba(245,196,0,.3);width:42px;height:42px;position:relative;z-index:9999}
+.upload-icon-btn:hover{opacity:.85;transform:scale(1.05)}
+.upload-icon-btn input[type="file"]{display:none}
+.upload-icon-btn svg{width:22px;height:22px}
 </style>
 </head>
 <body>
@@ -225,11 +271,12 @@ main{padding:28px 32px;max-width:1600px;background:#FFFFFF}
     <span class="brand-name">STRATEGY <span>CUES</span></span>
   </a>
   <ul class="nav-tabs" id="nav-tabs">
-    <li><a href="#" class="disabled" data-page="dashboard">Dashboard</a></li>
-    <li><a href="#" class="disabled" data-page="groups">Property Groups</a></li>
-    <li><a href="#" class="disabled" data-page="properties">Individual Properties</a></li>
-    <li><a href="#" class="disabled" data-page="cancellations">Cancellations</a></li>
-    <li><a href="#" class="disabled" data-page="reservations">All Reservations</a></li>
+    <li><a href="#" class="active" data-page="dashboard">Dashboard</a></li>
+    <li><a href="#" class="" data-page="groups">Property Groups</a></li>
+    <li><a href="#" class="" data-page="properties">Individual Properties</a></li>
+    <li><a href="#" class="" data-page="cancellations">Cancellations</a></li>
+    <li><a href="#" class="" data-page="reservations">All Reservations</a></li>
+    <li><a href="#" class="" data-page="daily-comparison">Daily Comparison</a></li>
   </ul>
   <div class="nav-right">
     <div class="nav-meta" id="nav-meta">No file loaded</div>
@@ -266,7 +313,7 @@ main{padding:28px 32px;max-width:1600px;background:#FFFFFF}
 </div>
 
 <!-- UPLOAD SCREEN -->
-<div id="upload-screen">
+<div id="upload-screen" style="display:none">
   <div class="upload-hero">
     <h1>Pickup <em>Insights</em></h1>
     <p>Just upload the PriceLabs file from the path below, nice and easy!</p>
@@ -293,18 +340,32 @@ main{padding:28px 32px;max-width:1600px;background:#FFFFFF}
 </div>
 
 <!-- DASHBOARD WRAPPER (hidden until file loaded) -->
-<div id="dashboard-wrapper" style="display:none">
+<div id="dashboard-wrapper">
   <div class="page-header">
     <div>
       <h1>Pickup <em>Insights</em></h1>
-      <p id="header-meta">—</p>
+      <p id="header-meta"></p>
     </div>
-    <button class="reload-btn" onclick="resetApp()">↑ Load New File</button>
+    <div class="tooltip-wrapper">
+      <label class="upload-icon-btn" onclick="resetApp()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+          <polyline points="17 8 12 3 7 8"></polyline>
+          <line x1="12" y1="3" x2="12" y2="15"></line>
+        </svg>
+      </label>
+      <div class="tooltip">PriceLabs →
+Portfolio Analytics →
+Bookings Report →
+Update Booked and stay dates &
+Booking Status Dropdown →
+Download the report</div>
+    </div>
   </div>
   <main>
 
     <!-- DASHBOARD PAGE -->
-    <div class="page" id="page-dashboard">
+    <div class="page active" id="page-dashboard">
       <div class="dash-filters" id="dash-filters" style="display:none">
         <label>Filter</label>
         <select class="dash-filter-select" id="df-group"><option value="">All Groups</option></select>
@@ -400,6 +461,48 @@ main{padding:28px 32px;max-width:1600px;background:#FFFFFF}
       <div class="table-wrap scroll-x"><table><thead><tr id="res-thead-row"></tr></thead><tbody id="res-tbody"></tbody></table></div>
     </div>
 
+  </main>
+</div>
+
+<!-- DAILY COMPARISON STANDALONE PAGE -->
+<div id="daily-comparison-wrapper" style="display:none">
+  <div class="page-header">
+    <div>
+      <h1>Daily <em>Comparison</em></h1>
+      <p id="daily-comparison-meta"></p>
+    </div>
+    <div class="tooltip-wrapper">
+      <label class="upload-icon-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+          <polyline points="17 8 12 3 7 8"></polyline>
+          <line x1="12" y1="3" x2="12" y2="15"></line>
+        </svg>
+        <input type="file" id="daily-comparison-file-input" accept=".xlsx,.xls">
+      </label>
+      <div class="tooltip">PriceLabs → Portfolio Analytics →
+Report Builder →
+Custom Report for Daily Comparison</div>
+    </div>
+  </div>
+  <main>
+    <div class="page active" id="page-daily-comparison">
+      <div class="dash-filters" id="dc-filters" style="display:none">
+        <label>Filter</label>
+        <select class="dash-filter-select" id="dc-group-filter"><option value="">All Groups</option></select>
+        <select class="dash-filter-select" id="dc-subgroup-filter"><option value="">All Sub-Groups</option></select>
+        <select class="dash-filter-select" id="dc-listing-filter"><option value="">All Listings</option></select>
+        <button class="dash-filter-clear" onclick="clearDCFilters()">Clear Filters</button>
+        <span class="dash-filter-count" id="dc-count"></span>
+      </div>
+      <div id="daily-comparison-content">
+        <div class="no-file-msg">
+          <span class="upload-icon">📊</span>
+          <p><strong>No data loaded yet</strong></p>
+          <p>Click the upload button above to upload your Daily Comparison Excel file</p>
+        </div>
+      </div>
+    </div>
   </main>
 </div>
 
@@ -804,7 +907,10 @@ function buildDashboard(filename) {
       const records = normalizeRows(RAW_ROWS);
       D = aggregate(records);
       D.filename = filename;
-      D.generatedAt = new Date().toLocaleDateString('en-CA', {year:'numeric',month:'long',day:'numeric'});
+      const now = new Date();
+      const dateStr = now.toLocaleDateString('en-US', {month:'long',day:'numeric',year:'numeric'});
+      const timeStr = now.toLocaleTimeString('en-US', {hour:'numeric',minute:'2-digit',hour12:true});
+      D.generatedAt = `${dateStr}, ${timeStr}`;
       hideOverlay();
       renderDashboard();
     } catch(e) {
@@ -964,7 +1070,7 @@ function aggregate(records) {
     if (!r.checkin || r.adr <= 0 || r.los <= 0) {
       // fallback: assign all revenue to checkin_month
       var k = r.checkin_month || 'Unknown';
-      if (!monthlyMap[k]) monthlyMap[k] = {key:k, Revenue:0, RoomNights:0, Reservations:0, _adrs:[], _loss:[]};
+      if (!monthlyMap[k]) monthlyMap[k] = {key:k, Revenue:0, RoomNights:0, Reservations:0, _adrs:[], _loss:[], _res:new Set()};
       monthlyMap[k].Revenue      += r.rental_rev;
       monthlyMap[k].RoomNights   += r.los;
       monthlyMap[k].Reservations += 1;
@@ -1294,7 +1400,7 @@ function aggregateFiltered(booked, cancelled) {
 }
 
 function renderDashboard() {
-  const meta = `Source: ${D.filename} · Generated: ${D.generatedAt} · ${D.kpis.n_res} bookings · ${D.kpis.n_canc} cancellations`;
+  const meta = D.generatedAt;
   document.getElementById('header-meta').textContent  = meta;
   // footer-meta removed
   document.getElementById('nav-meta').textContent     = D.filename;
@@ -1812,12 +1918,28 @@ document.querySelectorAll('.nav-tabs a').forEach(a => {
   a.addEventListener('click', e => {
     e.preventDefault();
     if (a.classList.contains('disabled')) return;
+    
     document.querySelectorAll('.nav-tabs a').forEach(x=>x.classList.remove('active'));
     a.classList.add('active');
-    document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-    document.getElementById('page-'+a.dataset.page).classList.add('active');
-    if (a.dataset.page==='dashboard') {
-      setTimeout(()=>{ document.querySelectorAll('.bar-fill[data-w]').forEach(el=>{ el.style.width=el.dataset.w+'%'; }); }, 100);
+    
+    // Handle showing/hiding different wrappers
+    if (a.dataset.page === 'daily-comparison') {
+      // Show Daily Comparison wrapper, hide others
+      document.getElementById('upload-screen').style.display = 'none';
+      document.getElementById('dashboard-wrapper').style.display = 'none';
+      document.getElementById('daily-comparison-wrapper').style.display = 'block';
+    } else {
+      // Show appropriate page within dashboard wrapper
+      document.getElementById('upload-screen').style.display = 'none';
+      document.getElementById('dashboard-wrapper').style.display = 'block';
+      document.getElementById('daily-comparison-wrapper').style.display = 'none';
+      
+      document.querySelectorAll('#dashboard-wrapper .page').forEach(p=>p.classList.remove('active'));
+      document.getElementById('page-'+a.dataset.page).classList.add('active');
+      
+      if (a.dataset.page==='dashboard') {
+        setTimeout(()=>{ document.querySelectorAll('.bar-fill[data-w]').forEach(el=>{ el.style.width=el.dataset.w+'%'; }); }, 100);
+      }
     }
   });
 });
@@ -1832,14 +1954,627 @@ function showError(msg) { document.getElementById('error-text').textContent=msg;
 function dismissError() { document.getElementById('error-banner').classList.remove('active'); }
 
 function resetApp() {
-  document.getElementById('upload-screen').style.display='flex';
-  document.getElementById('dashboard-wrapper').style.display='none';
-  document.getElementById('nav-meta').textContent='No file loaded';
-  document.querySelectorAll('.nav-tabs a').forEach(a=>{a.classList.remove('active');a.classList.add('disabled');});
-  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-  fileInput.value='';
-  RAW_ROWS=[];HEADERS=[];COL_MAP={};D={};filteredRes=[];
+  // Trigger file input dialog instead of showing upload screen
+  document.getElementById('file-input').click();
 }
+
+// ════════════════════════════════════════════════════════
+//  DAILY COMPARISON FUNCTIONALITY
+// ════════════════════════════════════════════════════════
+let dailyComparisonData = [];
+let dailyComparisonComments = {}; // Store comments by row index
+let dcFilteredRows = []; // Filtered row data
+let dcCurrentSort = { column: -1, direction: 'none' }; // Sorting state
+let dcColumnMap = {}; // Map column names to indices
+
+// Handle Daily Comparison file upload
+document.getElementById('daily-comparison-file-input').addEventListener('change', function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  showOverlay('Reading Daily Comparison file...');
+  
+  const reader = new FileReader();
+  reader.onload = function(evt) {
+    try {
+      const data = new Uint8Array(evt.target.result);
+      const workbook = XLSX.read(data, {type: 'array'});
+      const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+      const jsonData = XLSX.utils.sheet_to_json(firstSheet, {header: 1, defval: ''});
+      
+      if (jsonData.length < 2) {
+        hideOverlay();
+        showError('The file appears to be empty or has no data rows.');
+        return;
+      }
+
+      dailyComparisonData = jsonData;
+      dcCurrentSort = { column: -1, direction: 'none' };
+      initDailyComparisonTable();
+      hideOverlay();
+      
+      // Update meta with timestamp
+      const now = new Date();
+      const dateStr = now.toLocaleDateString('en-US', {month:'long',day:'numeric',year:'numeric'});
+      const timeStr = now.toLocaleTimeString('en-US', {hour:'numeric',minute:'2-digit',hour12:true});
+      const timestamp = `${dateStr}, ${timeStr}`;
+      document.getElementById('daily-comparison-meta').textContent = timestamp;
+    } catch (err) {
+      hideOverlay();
+      showError('Error reading file: ' + err.message);
+      console.error(err);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+});
+
+function initDailyComparisonTable() {
+  if (dailyComparisonData.length < 2) return;
+  
+  const headers = dailyComparisonData[0];
+  
+  // Build column map
+  dcColumnMap = {};
+  headers.forEach((header, idx) => {
+    const normalizedHeader = header.toString().toLowerCase().trim();
+    dcColumnMap[normalizedHeader] = idx;
+  });
+  
+  // Show filters
+  document.getElementById('dc-filters').style.display = 'flex';
+  
+  // Initialize filters
+  populateDCFilters();
+  
+  // Initialize with all rows
+  dcFilteredRows = dailyComparisonData.slice(1);
+  
+  // Update count
+  updateDCFilterCount();
+  
+  // Render table
+  renderDailyComparisonTable();
+}
+
+function populateDCFilters() {
+  const headers = dailyComparisonData[0];
+  const rows = dailyComparisonData.slice(1);
+  
+  // Helper function to decode HTML entities
+  function decodeHtmlEntities(text) {
+    const textarea = document.createElement('textarea');
+    textarea.innerHTML = text;
+    return textarea.value;
+  }
+  
+  // Get column indices
+  const groupColIdx = dcColumnMap['group'] !== undefined ? dcColumnMap['group'] : -1;
+  const subgroupColIdx = dcColumnMap['sub-group'] !== undefined ? dcColumnMap['sub-group'] : -1;
+  const listingColIdx = dcColumnMap['listing name'] !== undefined ? dcColumnMap['listing name'] : 0;
+  
+  // Populate Group filter
+  if (groupColIdx !== -1) {
+    const groupSelect = document.getElementById('dc-group-filter');
+    const uniqueGroups = new Set();
+    rows.forEach(row => {
+      const val = row[groupColIdx];
+      if (val !== null && val !== undefined && val !== '') {
+        uniqueGroups.add(val.toString());
+      }
+    });
+    const sortedGroups = Array.from(uniqueGroups).sort();
+    groupSelect.innerHTML = '<option value="">All Groups</option>';
+    sortedGroups.forEach(group => {
+      groupSelect.innerHTML += `<option value="${group}">${group}</option>`;
+    });
+    groupSelect.addEventListener('change', onDCGroupChange);
+  }
+  
+  // Populate initial Sub-Group filter (all subgroups)
+  if (subgroupColIdx !== -1) {
+    const subgroupSelect = document.getElementById('dc-subgroup-filter');
+    const uniqueSubgroups = new Set();
+    rows.forEach(row => {
+      const val = row[subgroupColIdx];
+      if (val !== null && val !== undefined && val !== '') {
+        uniqueSubgroups.add(val.toString());
+      }
+    });
+    const sortedSubgroups = Array.from(uniqueSubgroups).sort();
+    subgroupSelect.innerHTML = '<option value="">All Sub-Groups</option>';
+    sortedSubgroups.forEach(subgroup => {
+      subgroupSelect.innerHTML += `<option value="${subgroup}">${subgroup}</option>`;
+    });
+    subgroupSelect.addEventListener('change', onDCSubgroupChange);
+  }
+  
+  // Populate initial Listing filter (all listings)
+  const listingSelect = document.getElementById('dc-listing-filter');
+  const uniqueListings = new Set();
+  rows.forEach(row => {
+    const val = row[listingColIdx];
+    if (val !== null && val !== undefined && val !== '') {
+      uniqueListings.add(decodeHtmlEntities(val.toString()));
+    }
+  });
+  const sortedListings = Array.from(uniqueListings).sort();
+  listingSelect.innerHTML = '<option value="">All Listings</option>';
+  sortedListings.forEach(listing => {
+    listingSelect.innerHTML += `<option value="${listing}">${listing}</option>`;
+  });
+  listingSelect.addEventListener('change', applyDCFilters);
+}
+
+function onDCGroupChange() {
+  const headers = dailyComparisonData[0];
+  const rows = dailyComparisonData.slice(1);
+  const selectedGroup = document.getElementById('dc-group-filter').value;
+  
+  const groupColIdx = dcColumnMap['group'] !== undefined ? dcColumnMap['group'] : -1;
+  const subgroupColIdx = dcColumnMap['sub-group'] !== undefined ? dcColumnMap['sub-group'] : -1;
+  const listingColIdx = dcColumnMap['listing name'] !== undefined ? dcColumnMap['listing name'] : 0;
+  
+  function decodeHtmlEntities(text) {
+    const textarea = document.createElement('textarea');
+    textarea.innerHTML = text;
+    return textarea.value;
+  }
+  
+  // Reset subgroup and listing filters
+  document.getElementById('dc-subgroup-filter').value = '';
+  document.getElementById('dc-listing-filter').value = '';
+  
+  // Populate subgroups based on selected group
+  const subgroupSelect = document.getElementById('dc-subgroup-filter');
+  const uniqueSubgroups = new Set();
+  
+  rows.forEach(row => {
+    if (!selectedGroup || row[groupColIdx] === selectedGroup) {
+      const val = row[subgroupColIdx];
+      if (val !== null && val !== undefined && val !== '') {
+        uniqueSubgroups.add(val.toString());
+      }
+    }
+  });
+  
+  const sortedSubgroups = Array.from(uniqueSubgroups).sort();
+  subgroupSelect.innerHTML = '<option value="">All Sub-Groups</option>';
+  sortedSubgroups.forEach(subgroup => {
+    subgroupSelect.innerHTML += `<option value="${subgroup}">${subgroup}</option>`;
+  });
+  
+  // Populate listings based on selected group
+  const listingSelect = document.getElementById('dc-listing-filter');
+  const uniqueListings = new Set();
+  
+  rows.forEach(row => {
+    if (!selectedGroup || row[groupColIdx] === selectedGroup) {
+      const val = row[listingColIdx];
+      if (val !== null && val !== undefined && val !== '') {
+        uniqueListings.add(decodeHtmlEntities(val.toString()));
+      }
+    }
+  });
+  
+  const sortedListings = Array.from(uniqueListings).sort();
+  listingSelect.innerHTML = '<option value="">All Listings</option>';
+  sortedListings.forEach(listing => {
+    listingSelect.innerHTML += `<option value="${listing}">${listing}</option>`;
+  });
+  
+  applyDCFilters();
+}
+
+function onDCSubgroupChange() {
+  const headers = dailyComparisonData[0];
+  const rows = dailyComparisonData.slice(1);
+  const selectedGroup = document.getElementById('dc-group-filter').value;
+  const selectedSubgroup = document.getElementById('dc-subgroup-filter').value;
+  
+  const groupColIdx = dcColumnMap['group'] !== undefined ? dcColumnMap['group'] : -1;
+  const subgroupColIdx = dcColumnMap['sub-group'] !== undefined ? dcColumnMap['sub-group'] : -1;
+  const listingColIdx = dcColumnMap['listing name'] !== undefined ? dcColumnMap['listing name'] : 0;
+  
+  function decodeHtmlEntities(text) {
+    const textarea = document.createElement('textarea');
+    textarea.innerHTML = text;
+    return textarea.value;
+  }
+  
+  // Reset listing filter
+  document.getElementById('dc-listing-filter').value = '';
+  
+  // Populate listings based on selected group and subgroup
+  const listingSelect = document.getElementById('dc-listing-filter');
+  const uniqueListings = new Set();
+  
+  rows.forEach(row => {
+    let matches = true;
+    if (selectedGroup && row[groupColIdx] !== selectedGroup) matches = false;
+    if (selectedSubgroup && row[subgroupColIdx] !== selectedSubgroup) matches = false;
+    
+    if (matches) {
+      const val = row[listingColIdx];
+      if (val !== null && val !== undefined && val !== '') {
+        uniqueListings.add(decodeHtmlEntities(val.toString()));
+      }
+    }
+  });
+  
+  const sortedListings = Array.from(uniqueListings).sort();
+  listingSelect.innerHTML = '<option value="">All Listings</option>';
+  sortedListings.forEach(listing => {
+    listingSelect.innerHTML += `<option value="${listing}">${listing}</option>`;
+  });
+  
+  applyDCFilters();
+}
+
+function clearDCFilters() {
+  document.getElementById('dc-group-filter').value = '';
+  document.getElementById('dc-subgroup-filter').value = '';
+  document.getElementById('dc-listing-filter').value = '';
+  
+  // Reset cascading filters
+  onDCGroupChange();
+}
+
+function applyDCFilters() {
+  const allRows = dailyComparisonData.slice(1);
+  
+  // Helper function to decode HTML entities
+  function decodeHtmlEntities(text) {
+    const textarea = document.createElement('textarea');
+    textarea.innerHTML = text;
+    return textarea.value;
+  }
+  
+  const groupFilter = document.getElementById('dc-group-filter').value;
+  const subgroupFilter = document.getElementById('dc-subgroup-filter').value;
+  const listingFilter = document.getElementById('dc-listing-filter').value;
+  
+  const groupColIdx = dcColumnMap['group'] !== undefined ? dcColumnMap['group'] : -1;
+  const subgroupColIdx = dcColumnMap['sub-group'] !== undefined ? dcColumnMap['sub-group'] : -1;
+  const listingColIdx = dcColumnMap['listing name'] !== undefined ? dcColumnMap['listing name'] : 0;
+  
+  dcFilteredRows = allRows.filter(row => {
+    // Group filter
+    if (groupFilter && row[groupColIdx] !== groupFilter) return false;
+    
+    // Sub-group filter
+    if (subgroupFilter && row[subgroupColIdx] !== subgroupFilter) return false;
+    
+    // Listing name filter with HTML entity decoding
+    if (listingFilter) {
+      const listingName = decodeHtmlEntities((row[listingColIdx] || '').toString());
+      if (listingName !== listingFilter) return false;
+    }
+    
+    return true;
+  });
+  
+  // Update count
+  updateDCFilterCount();
+  
+  // Re-render table
+  renderDailyComparisonTable();
+}
+
+function updateDCFilterCount() {
+  const total = dailyComparisonData.length - 1;
+  const filtered = dcFilteredRows.length;
+  document.getElementById('dc-count').textContent = `${filtered} of ${total} rows`;
+}
+
+function sortDCColumn(columnIdx) {
+  if (dcCurrentSort.column === columnIdx) {
+    // Toggle sort direction
+    if (dcCurrentSort.direction === 'asc') {
+      dcCurrentSort.direction = 'desc';
+    } else if (dcCurrentSort.direction === 'desc') {
+      dcCurrentSort.direction = 'none';
+      dcCurrentSort.column = -1;
+    } else {
+      dcCurrentSort.direction = 'asc';
+    }
+  } else {
+    dcCurrentSort.column = columnIdx;
+    dcCurrentSort.direction = 'asc';
+  }
+  
+  if (dcCurrentSort.direction !== 'none') {
+    dcFilteredRows.sort((a, b) => {
+      const aVal = a[columnIdx];
+      const bVal = b[columnIdx];
+      
+      // Handle null/undefined
+      if (aVal === null || aVal === undefined || aVal === '') return 1;
+      if (bVal === null || bVal === undefined || bVal === '') return -1;
+      
+      let comparison = 0;
+      if (typeof aVal === 'number' && typeof bVal === 'number') {
+        comparison = aVal - bVal;
+      } else {
+        comparison = String(aVal).localeCompare(String(bVal));
+      }
+      
+      return dcCurrentSort.direction === 'asc' ? comparison : -comparison;
+    });
+  } else {
+    // Reset to original filter order
+    applyDCFilters();
+    return;
+  }
+  
+  renderDailyComparisonTable();
+}
+
+function renderDailyComparisonTable() {
+  if (dailyComparisonData.length < 2) return;
+  
+  const headers = dailyComparisonData[0];
+  const rows = dcFilteredRows;
+  
+  // Helper function to decode HTML entities
+  function decodeHtmlEntities(text) {
+    if (!text) return '';
+    const textarea = document.createElement('textarea');
+    textarea.innerHTML = text;
+    return textarea.value;
+  }
+  
+  // Check if Comments column already exists
+  let commentsColIndex = -1;
+  for (let i = 0; i < headers.length; i++) {
+    if (headers[i] && headers[i].toString().toLowerCase().trim() === 'comments') {
+      commentsColIndex = i;
+      break;
+    }
+  }
+  
+  // Find specific column indices for reordering
+  let goalCompletionIdx = -1;
+  let rentalRevenueLYIdx = -1;
+  
+  for (let i = 0; i < headers.length; i++) {
+    const headerLower = headers[i] ? headers[i].toString().toLowerCase().trim() : '';
+    if (headerLower === 'rental revenue goal completion %' || headerLower.includes('goal completion')) {
+      goalCompletionIdx = i;
+    }
+    if (headerLower === 'rental revenue ly' || headerLower.includes('revenue ly')) {
+      rentalRevenueLYIdx = i;
+    }
+  }
+  
+  // Build headers array with custom order:
+  // 1. Listing Name
+  // 2. Comments (right after Listing Name)
+  // 3. All other columns except Goal Completion %
+  // 4. Rental Revenue LY
+  // 5. Goal Completion % (right after LY)
+  
+  let displayHeaders = [];
+  let dataColumnIndices = [];
+  
+  // Add Listing Name first
+  displayHeaders.push(headers[0]);
+  dataColumnIndices.push(0);
+  
+  // Add Comments second (right after Listing Name)
+  displayHeaders.push('Comments');
+  dataColumnIndices.push(commentsColIndex);
+  
+  // Add all other columns except Goal Completion % and Listing Name and Comments
+  for (let i = 1; i < headers.length; i++) {
+    if (i !== commentsColIndex && i !== goalCompletionIdx) {
+      displayHeaders.push(headers[i]);
+      dataColumnIndices.push(i);
+    }
+  }
+  
+  // Now insert Goal Completion % right after Rental Revenue LY
+  if (goalCompletionIdx !== -1) {
+    // Find where LY is in the display order
+    let lyDisplayIdx = -1;
+    for (let i = 0; i < dataColumnIndices.length; i++) {
+      if (dataColumnIndices[i] === rentalRevenueLYIdx) {
+        lyDisplayIdx = i;
+        break;
+      }
+    }
+    
+    if (lyDisplayIdx !== -1) {
+      // Insert Goal Completion % right after LY
+      displayHeaders.splice(lyDisplayIdx + 1, 0, headers[goalCompletionIdx]);
+      dataColumnIndices.splice(lyDisplayIdx + 1, 0, goalCompletionIdx);
+    } else {
+      // If LY not found, just add at the end
+      displayHeaders.push(headers[goalCompletionIdx]);
+      dataColumnIndices.push(goalCompletionIdx);
+    }
+  }
+  
+  // Identify columns that should have green bars
+  const barColumns = [
+    'rental revenue',
+    'rental revenue goal completion %',
+    'rental revenue stly',
+    'rental revenue ly'
+  ];
+  
+  // Calculate max values for bar columns
+  const maxValues = {};
+  barColumns.forEach(colName => {
+    const colIdx = dcColumnMap[colName];
+    if (colIdx !== undefined) {
+      maxValues[colIdx] = Math.max(...rows.map(row => {
+        const val = row[colIdx];
+        return typeof val === 'number' ? val : 0;
+      }));
+    }
+  });
+  
+  // Build table HTML
+  let tableHTML = '<div class="daily-comparison-table-wrapper">';
+  tableHTML += '<div class="daily-comparison-scroll">';
+  tableHTML += '<table class="daily-comparison-table">';
+  
+  // Header row
+  tableHTML += '<thead><tr>';
+  displayHeaders.forEach((header, displayIdx) => {
+    const originalColIdx = dataColumnIndices[displayIdx];
+    const isComments = displayIdx === displayHeaders.length - 1;
+    const isNum = !isComments && displayIdx > 0;
+    
+    let cls = isComments ? 'comments-header' : (isNum ? 'num sortable' : 'sortable');
+    
+    // Add sort class if this column is currently sorted
+    if (originalColIdx === dcCurrentSort.column) {
+      cls += dcCurrentSort.direction === 'asc' ? ' sort-asc' : ' sort-desc';
+    }
+    
+    const onclick = isComments ? '' : ` onclick="sortDCColumn(${originalColIdx})"`;
+    tableHTML += `<th class="${cls}"${onclick}>${header}</th>`;
+  });
+  tableHTML += '</tr></thead>';
+  
+  // Data rows
+  tableHTML += '<tbody>';
+  rows.forEach((row, rowIdx) => {
+    // Find original row index for comments
+    const originalRowIdx = dailyComparisonData.indexOf(row) - 1;
+    
+    tableHTML += '<tr>';
+    
+    // Render all columns in display order
+    for (let i = 0; i < dataColumnIndices.length; i++) {
+      const originalColIdx = dataColumnIndices[i];
+      const headerName = displayHeaders[i] ? displayHeaders[i].toString().toLowerCase().trim() : '';
+      const isComments = headerName === 'comments';
+      
+      if (isComments) {
+        // Comments column (editable)
+        let commentValue = '';
+        if (commentsColIndex !== -1 && row[commentsColIndex]) {
+          commentValue = row[commentsColIndex].toString();
+          dailyComparisonComments[originalRowIdx] = commentValue;
+        } else if (dailyComparisonComments[originalRowIdx]) {
+          commentValue = dailyComparisonComments[originalRowIdx];
+        }
+        
+        tableHTML += `<td class="comments-cell" contenteditable="true" data-row="${originalRowIdx}">${commentValue}</td>`;
+      } else if (i === 0) {
+        // Listing Name (first column - sticky) - decode HTML entities
+        const value = row[originalColIdx];
+        const decodedValue = decodeHtmlEntities(value ? value.toString() : '');
+        tableHTML += `<td>${decodedValue}</td>`;
+      } else {
+        // Number columns
+        const value = row[originalColIdx];
+        let displayValue = value;
+        const isPercentage = headerName.includes('%') || headerName.includes('completion');
+        const hasBar = barColumns.some(col => headerName.includes(col.toLowerCase()));
+        
+        // Format numbers
+        if (typeof value === 'number') {
+          if (isPercentage) {
+            displayValue = value.toFixed(1) + '%';
+          } else if (value % 1 === 0) {
+            displayValue = value.toLocaleString();
+          } else {
+            displayValue = value.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+          }
+        }
+        
+        if (displayValue === undefined || displayValue === null || displayValue === '') {
+          displayValue = '—';
+        }
+        
+        // Add green bar if applicable
+        if (hasBar && typeof value === 'number' && maxValues[originalColIdx] > 0) {
+          const percentage = (value / maxValues[originalColIdx]) * 100;
+          // Calculate color intensity: higher values = darker green
+          const intensity = percentage / 100;
+          // Dark green for high values, light green for low values
+          const darkGreen = `rgba(34, 139, 34, ${0.3 + (intensity * 0.5)})`; // from 0.3 to 0.8
+          const lightGreen = `rgba(144, 238, 144, ${0.2 + (intensity * 0.3)})`; // from 0.2 to 0.5
+          tableHTML += `<td class="num has-bar"><div class="bar-bg" style="width:${percentage}%;background:linear-gradient(to right,${darkGreen},${lightGreen})"></div><span class="bar-value">${displayValue}</span></td>`;
+        } else {
+          tableHTML += `<td class="num">${displayValue}</td>`;
+        }
+      }
+    }
+    
+    tableHTML += '</tr>';
+  });
+  tableHTML += '</tbody>';
+  
+  tableHTML += '</table>';
+  tableHTML += '</div>';
+  tableHTML += '</div>';
+  
+  document.getElementById('daily-comparison-content').innerHTML = tableHTML;
+  
+  // Attach event listeners to contenteditable cells
+  document.querySelectorAll('.comments-cell[contenteditable="true"]').forEach(cell => {
+    cell.addEventListener('blur', function() {
+      const rowIdx = parseInt(this.dataset.row);
+      dailyComparisonComments[rowIdx] = this.textContent.trim();
+    });
+    
+    cell.addEventListener('paste', function(e) {
+      e.preventDefault();
+      const text = (e.clipboardData || window.clipboardData).getData('text/plain');
+      document.execCommand('insertText', false, text);
+    });
+    
+    cell.addEventListener('input', function() {
+      const rowIdx = parseInt(this.dataset.row);
+      dailyComparisonComments[rowIdx] = this.textContent.trim();
+    });
+  });
+}
+
+// Dynamic tooltip positioning for fixed position tooltips
+function positionTooltips() {
+  document.querySelectorAll('.tooltip-wrapper').forEach(wrapper => {
+    const tooltip = wrapper.querySelector('.tooltip');
+    if (!tooltip) return;
+    
+    wrapper.addEventListener('mouseenter', function() {
+      const rect = wrapper.getBoundingClientRect();
+      const tooltipRect = tooltip.getBoundingClientRect();
+      
+      // Position tooltip below the wrapper, centered
+      const top = rect.bottom + 8;
+      let left = rect.left + (rect.width / 2) - (tooltipRect.width / 2);
+      
+      // Prevent tooltip from going off the right edge of the screen
+      const rightEdge = left + tooltipRect.width;
+      const screenWidth = window.innerWidth;
+      const padding = 16; // padding from edge
+      
+      if (rightEdge > screenWidth - padding) {
+        left = screenWidth - tooltipRect.width - padding;
+      }
+      
+      // Prevent tooltip from going off the left edge
+      if (left < padding) {
+        left = padding;
+      }
+      
+      tooltip.style.top = top + 'px';
+      tooltip.style.left = left + 'px';
+      tooltip.style.transform = 'none';
+    });
+  });
+}
+
+// Initialize tooltip positioning on load and when DOM changes
+positionTooltips();
+// Re-position on window resize
+window.addEventListener('resize', positionTooltips);
+
 </script>
 </body>
 </html>

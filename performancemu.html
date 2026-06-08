@@ -550,7 +550,7 @@ function parseData(aRaw, bRaw, lRaw) {
   const propertiesAll = [];
   for (let i = 0; i < propRow.length; i++) {
     const v = propRow[i];
-    if (v && typeof v === 'string' && v.trim().length > 2 && v.trim().toLowerCase() !== 'sp')
+    if (v && typeof v === 'string' && v.trim().length >= 2)
       propertiesAll.push({ name: v.trim(), col: i });
   }
   if (!propertiesAll.length) return null;

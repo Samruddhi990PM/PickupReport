@@ -752,6 +752,40 @@ function resetDashboard() {
 // with the sleek scrollbar indicating there are earlier months to
 // the left. This avoids browser print-scaling quirks entirely.
 // ─────────────────────────────────────────────────────────
+// html2canvas does NOT respect the scrollLeft of inner scrollable elements —
+// it always paints them as if scrolled to position 0 (leftmost/earliest
+// content), regardless of what's actually scrolled into view on screen.
+// Since .mo-cols is scrolled fully right by default to show the latest
+// months, a naive capture would silently show the earliest months instead
+// and clip the latest one (e.g. June) off the edge.
+//
+// Fix: before capture, physically remove the off-screen early-month
+// columns from the DOM so only the currently-visible window remains —
+// then put them back afterward. This makes the PDF match the screen
+// exactly, with no dependency on scroll state.
+function trimMonthColumnsForCapture() {
+  const removed = [];
+  document.querySelectorAll('.mo-cols').forEach(cols => {
+    const children = Array.from(cols.children);
+    if (children.length < 2) return;
+    const perColWidth = cols.scrollWidth / children.length;
+    const visibleCount = Math.max(1, Math.round(cols.clientWidth / perColWidth));
+    const removeCount = children.length - visibleCount;
+    if (removeCount <= 0) return;
+
+    const toRemove = children.slice(0, removeCount);
+    const nextSibling = children[removeCount] || null;
+    toRemove.forEach(el => cols.removeChild(el));
+    removed.push({ cols, toRemove, nextSibling });
+  });
+  return removed;
+}
+function restoreMonthColumnsAfterCapture(removed) {
+  removed.forEach(({ cols, toRemove, nextSibling }) => {
+    toRemove.forEach(el => cols.insertBefore(el, nextSibling));
+  });
+}
+
 async function exportPDF() {
   if (!dashData) return;
   const btn = document.getElementById('export-pdf-btn');
@@ -765,6 +799,8 @@ async function exportPDF() {
 
   // Let layout reflow (unwrapped month rows, etc.) before capturing
   await new Promise(r => setTimeout(r, 60));
+
+  const trimmed = trimMonthColumnsForCapture();
 
   try {
     const canvas = await html2canvas(activePane, {
@@ -801,6 +837,7 @@ async function exportPDF() {
     console.error(err);
     alert('PDF export failed: ' + err.message);
   } finally {
+    restoreMonthColumnsAfterCapture(trimmed);
     document.body.classList.remove('pdf-capturing');
     btn.innerHTML = originalLabel;
     btn.disabled = false;

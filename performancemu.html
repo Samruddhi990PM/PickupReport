@@ -10,6 +10,8 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
 :root{
   /* Strategy Cues brand */
@@ -193,11 +195,23 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
 .mo-col-head{background:var(--bg3);font-size:9px;font-weight:700;color:var(--text3);
   text-transform:uppercase;letter-spacing:.8px;padding:6px 0;text-align:center;}
 
-/* Each month column */
-.mo-cols{display:flex;gap:1px;background:var(--glass-b);}
-.mo-col{flex:1;background:var(--bg2);padding:10px 8px;}
+/* Wrapper: the 5-month visible window + its sleek scrollbar */
+.mo-cols-wrap{padding:0 16px 14px;}
+
+/* Each month column — fixed width, only ~5 fit in the window; rest scroll */
+.mo-cols{display:flex;gap:1px;background:var(--glass-b);overflow-x:auto;scroll-behavior:smooth;
+  width:464px;max-width:100%;scrollbar-width:none;-ms-overflow-style:none;}
+.mo-cols::-webkit-scrollbar{display:none;}
+.mo-col{flex:0 0 92px;min-width:92px;background:var(--bg2);padding:10px 8px;}
 .mo-col-month{font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;
   letter-spacing:.6px;text-align:center;margin-bottom:8px;}
+
+/* Custom sleek scrollbar — a real element (not a native scrollbar) so it
+   renders identically on screen, in print, and in the PDF export */
+.mo-scrollbar-track{width:464px;max-width:100%;height:3px;background:var(--bg4);
+  border-radius:2px;margin-top:7px;position:relative;overflow:hidden;}
+.mo-scrollbar-track.hidden{display:none;}
+.mo-scrollbar-thumb{position:absolute;top:0;left:0;height:100%;background:var(--gold);border-radius:2px;}
 
 /* Per-metric in a month column */
 .mm-block{margin-bottom:9px;}
@@ -303,7 +317,26 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
   .prop-grid{grid-template-columns:1fr;}
   .otb-charts{grid-template-columns:1fr;}
   .tab-btn{padding:4px 8px;font-size:11px;}
+  .mo-cols,.mo-scrollbar-track{width:278px;}
 }
+
+/* ── PRINT (Ctrl+P) FALLBACK ──
+   Keeps the same windowed month view + sleek scrollbar hint that's on
+   screen, so nothing wraps into an odd second row. */
+@media print{
+  .top-bar{position:static;}
+  .export-btn,.reset-btn{display:none !important;}
+  .prop-grid{grid-template-columns:repeat(2,1fr) !important;}
+  .pc{break-inside:avoid;page-break-inside:avoid;}
+}
+
+/* ── PDF EXPORT MODE (used by the Export PDF button) ──
+   Same idea as print, applied via JS while html2canvas captures the DOM. */
+/* ── PDF EXPORT MODE (used by the Export PDF button) ──
+   We deliberately do NOT unwrap the month rows here — the whole point
+   is that the PDF matches what's on screen: a 5-month window with the
+   sleek scrollbar indicating there's more to the left. */
+body.pdf-capturing .export-btn,body.pdf-capturing .reset-btn{visibility:hidden !important;}
 </style>
 </head>
 <body>
@@ -355,6 +388,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
       <button class="tab-btn" onclick="switchTab('otb')" id="tab-btn-otb">Forward OTB</button>
     </div>
     <div class="date-pill" id="date-pill"></div>
+    <button class="export-btn" id="export-pdf-btn" onclick="exportPDF()" title="Download a print-ready PDF of this report">🖨 Export PDF</button>
     <button class="export-btn" onclick="exportClientView()" title="Bake data into a shareable HTML file">⬇ Export Client View</button>
     <button class="reset-btn" onclick="resetDashboard()">↩ New File</button>
   </div>
@@ -710,6 +744,70 @@ function resetDashboard() {
 }
 
 // ─────────────────────────────────────────────────────────
+// EXPORT PDF
+// Renders the currently active tab to a multi-page PDF using
+// html2canvas + jsPDF, instead of relying on the browser's
+// Ctrl+P dialog. It captures the DOM exactly as shown on screen —
+// the 5-month window, scrolled to the most recent months by default,
+// with the sleek scrollbar indicating there are earlier months to
+// the left. This avoids browser print-scaling quirks entirely.
+// ─────────────────────────────────────────────────────────
+async function exportPDF() {
+  if (!dashData) return;
+  const btn = document.getElementById('export-pdf-btn');
+  const originalLabel = btn.innerHTML;
+  const activePane = document.querySelector('.tab-pane.active');
+  if (!activePane) return;
+
+  btn.disabled = true;
+  btn.innerHTML = '⏳ Generating…';
+  document.body.classList.add('pdf-capturing');
+
+  // Let layout reflow (unwrapped month rows, etc.) before capturing
+  await new Promise(r => setTimeout(r, 60));
+
+  try {
+    const canvas = await html2canvas(activePane, {
+      scale: 2,
+      backgroundColor: '#F7F7F7',
+      useCORS: true
+    });
+
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const pageW = pdf.internal.pageSize.getWidth();
+    const pageH = pdf.internal.pageSize.getHeight();
+    const imgW = pageW;
+    const imgH = (canvas.height * imgW) / canvas.width;
+    const imgData = canvas.toDataURL('image/png');
+
+    let heightLeft = imgH;
+    let position = 0;
+    pdf.addImage(imgData, 'PNG', 0, position, imgW, imgH);
+    heightLeft -= pageH;
+
+    while (heightLeft > 0) {
+      position -= pageH;
+      pdf.addPage();
+      pdf.addImage(imgData, 'PNG', 0, position, imgW, imgH);
+      heightLeft -= pageH;
+    }
+
+    const rawName = document.getElementById('top-file').textContent.trim();
+    const safeName = rawName.replace(/\.[^.]+$/, '').replace(/\W+/g, '_') || 'Performance_Report';
+    const dateStr = new Date().toISOString().slice(0, 10);
+    pdf.save(`${safeName}_${dateStr}.pdf`);
+  } catch (err) {
+    console.error(err);
+    alert('PDF export failed: ' + err.message);
+  } finally {
+    document.body.classList.remove('pdf-capturing');
+    btn.innerHTML = originalLabel;
+    btn.disabled = false;
+  }
+}
+
+// ─────────────────────────────────────────────────────────
 // EXPORT CLIENT VIEW
 // Serialises dashData into a self-contained HTML clone.
 // The client opens the file — no upload needed.
@@ -932,11 +1030,51 @@ function renderYTDGrid() {
       <!-- Monthly detail -->
       <div class="pc-divider"></div>
       <div class="pc-detail-label">MONTHLY DETAIL · REVENUE / OCCUPANCY / ADR</div>
-      <div class="mo-cols">${moColsHTML}</div>
+      <div class="mo-cols-wrap">
+        <div class="mo-cols">${moColsHTML}</div>
+        <div class="mo-scrollbar-track"><div class="mo-scrollbar-thumb"></div></div>
+      </div>
     `;
     grid.appendChild(card);
   }
   applyFilter(currentFilter);
+  initMoScrollbars();
+}
+
+// ─────────────────────────────────────────────────────────
+// MONTH-ROW SCROLLBAR
+// Each card shows a fixed 5-month window (see .mo-cols CSS width).
+// This wires up: (1) default scroll-position = rightmost/latest
+// months, (2) a slim custom scrollbar reflecting scroll position —
+// a real DOM element (not a native scrollbar) so it shows up
+// identically on screen, in Ctrl+P print, and in the PDF export.
+// ─────────────────────────────────────────────────────────
+function initMoScrollbars() {
+  requestAnimationFrame(() => {
+    document.querySelectorAll('.mo-cols-wrap').forEach(wrap => {
+      const cols = wrap.querySelector('.mo-cols');
+      const track = wrap.querySelector('.mo-scrollbar-track');
+      const thumb = wrap.querySelector('.mo-scrollbar-thumb');
+      if (!cols || !track || !thumb) return;
+
+      const hasOverflow = cols.scrollWidth > cols.clientWidth + 1;
+      track.classList.toggle('hidden', !hasOverflow);
+      if (!hasOverflow) return;
+
+      const updateThumb = () => {
+        const thumbPct = Math.min(100, (cols.clientWidth / cols.scrollWidth) * 100);
+        const maxScroll = cols.scrollWidth - cols.clientWidth;
+        const scrollPct = maxScroll > 0 ? cols.scrollLeft / maxScroll : 0;
+        thumb.style.width = thumbPct + '%';
+        thumb.style.left = ((100 - thumbPct) * scrollPct) + '%';
+      };
+
+      // Default: scrolled fully right so the latest months show first
+      cols.scrollLeft = cols.scrollWidth;
+      updateThumb();
+      cols.addEventListener('scroll', updateThumb, { passive: true });
+    });
+  });
 }
 
 // ─────────────────────────────────────────────────────────

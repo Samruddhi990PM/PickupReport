@@ -296,7 +296,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
 .otb-prop-gap{font-size:11px;font-weight:700;margin-top:4px;}
 
 /* Month cells inside each property row */
-.otb-mo-cells{display:flex;overflow-x:auto;}
+.otb-mo-cells{display:grid;grid-template-columns:repeat(var(--mo-cols,6),minmax(140px,1fr));overflow-x:auto;}
 .otb-mo-cell{flex:1;min-width:140px;padding:10px 12px;border-right:1px solid var(--glass-b);
   position:relative;}
 .otb-mo-cell:last-child{border-right:none;}
@@ -1463,7 +1463,7 @@ function renderOTBRows(months, prefix) {
           ${totalGap >= 0 ? '▲' : '▼'} ${fCS(Math.abs(totalGap))} ${totalGap >= 0 ? 'ahead' : 'behind budget'}
         </div>` : ''}
       </div>
-      <div class="otb-mo-cells">${moCells}</div>
+      <div class="otb-mo-cells" style="--mo-cols:${Math.max(6, months.length)}">${moCells}</div>
     `;
     container.appendChild(row);
   }
